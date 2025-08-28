@@ -1,0 +1,27 @@
+# dependencies (anywhere)
+node_modules/
+
+# build/coverage (anywhere)
+build/
+dist/
+coverage/
+
+# env & secrets
+.env
+.env.*
+config.env
+frontend/.env*
+backend/.env*
+backend/config.env
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# editor/OS
+.vscode/
+.DS_Store
+Thumbs.db
