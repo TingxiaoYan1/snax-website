@@ -2,45 +2,58 @@ import catchAsyncErrors from "../middlewares/catchAsyncErrors.js";
 import Order from "../models/order.js";
 import Product from "../models/product.js";
 import ErrorHandler from "../utils/errorHandler.js";
+import Cart from "../models/cart.js";
+import { calculateOrderCost } from "../utils/orderCost.js";
 
 // Create new Order => /api/v1/orders/new
-export const newOrder = catchAsyncErrors(async ( req,res,next) => {
-    const{
-        orderItems,
-        shippingInfo,
-        itemsPrice,
-        taxAmount,
-        shippingAmount,
-        totalAmount,
-        paymentMethod,
-        paymentInfo,
-    } = req.body;
+export const newOrder = catchAsyncErrors(async (req, res, next) => {
+  const { shippingInfo, paymentMethod, paymentInfo } = req.body; // keep only non-money fields
 
-    const order = await Order.create({
-        orderItems,
-        shippingInfo,
-        itemsPrice,
-        taxAmount,
-        shippingAmount,
-        totalAmount,
-        paymentMethod,
-        paymentInfo,
-        user:req.user._id,
-    });
+  // 1) Load server-side cart
+  const cart = await Cart.findOne({ user: req.user._id })
+    .populate({ path: "items.product", select: "name price stock images" });
 
-    //update inventory quantity
-    order?.orderItems?.forEach(async (item) => {
-        const product = await Product.findById(item?.product?.toString());
-        if(!product){
-            return next(new ErrorHandler("No Product found with this ID", 404));
-        }
-        product.stock = product.stock - item.quantity;
-        await product.save({ validateBeforeSave: false });
-    });
+  if (!cart || cart.items.length === 0) {
+    return next(new ErrorHandler("Your cart is empty", 400));
+  }
 
-    res.status(200).json({
-        order,
-    });
+  // 2) Normalize items from cart + clamp by stock
+  const orderItems = cart.items
+    .filter(ci => (ci.product?.stock ?? 0) > 0)
+    .map(ci => ({
+      product: ci.product._id,
+      name: ci.product.name,
+      price: ci.product.price,
+      image: ci.product.images?.[0]?.url,
+      quantity: Math.min(ci.quantity, ci.product.stock ?? 0),
+      variant: ci.variant,
+    }));
+
+  if (orderItems.length === 0) {
+    return next(new ErrorHandler("All items are out of stock", 400));
+  }
+
+  // 3) Compute money on the server (trusted)
+  const { itemsPrice, shippingPrice: shippingAmount, taxPrice: taxAmount, totalPrice: totalAmount } =
+    calculateOrderCost(orderItems);
+
+  // 4) Create order with server-computed amounts
+  const order = await Order.create({
+    user: req.user._id,
+    orderItems,
+    shippingInfo,
+    itemsPrice,
+    taxAmount,
+    shippingAmount,
+    totalAmount,
+    paymentMethod,
+    paymentInfo,
+  });
+
+  // 6) Clear server cart
+  await Cart.updateOne({ user: req.user._id }, { $set: { items: [] } });
+
+  res.status(200).json({ order });
 });
 
 

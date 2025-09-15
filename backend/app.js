@@ -21,6 +21,7 @@ dotenv.config({path: "backend/config/config.env"});
 // connecting to database
 connectDatabase();
 
+
 /* 🔹 MOUNT WEBHOOKS FIRST (raw body) */
 app.use("/api/v1/webhooks/square", express.raw({ type: "*/*" }), webhookRoutes);
 
@@ -32,14 +33,19 @@ import productRoutes from "./routes/products.js";
 import authRoutes from "./routes/auth.js";
 import orderRoutes from "./routes/order.js";
 import paymentRoutes from "./routes/payment.js";
+import cartRoutes from "./routes/cartRoutes.js";
+import userRoutes from "./routes/user.js";
 
 app.use("/api/v1", productRoutes);
 app.use("/api/v1", authRoutes);
 app.use("/api/v1", orderRoutes);
 app.use("/api/v1", paymentRoutes);
+app.use("/api/v1", cartRoutes);
+app.use("/api/v1", userRoutes);
 
 // Using error middleware
 app.use(errorMiddleware);
+
 
 const server = app.listen(process.env.PORT, () => {
     console.log(

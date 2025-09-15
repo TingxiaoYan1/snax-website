@@ -9,16 +9,14 @@ import { Toaster } from "react-hot-toast";
 import useUserRoutes from "./components/routes/userRoutes";
 import useAdminRoutes from "./components/routes/adminRoutes";
 
-
 function App() {
-
   const userRoutes = useUserRoutes();
-  const adminRoutes= useAdminRoutes();
+  const adminRoutes = useAdminRoutes();
 
   return (
     <Router>
       <div className="App">
-        <Toaster position = "top-center" />
+        <Toaster position="top-center" />
         <Header />
 
         <div className="container">

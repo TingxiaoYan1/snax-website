@@ -32,6 +32,17 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: "user",
     },
+
+    searchHistory: {
+        type: [
+            {
+                term: { type: String, required: true, trim: true },
+                at: { type: Date, default: Date.now }
+            }
+            
+        ],
+        default: []
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
@@ -73,5 +84,24 @@ userSchema.methods.getResetPasswordToken = function () {
 
     return resetToken;
 };
+
+userSchema.methods.addSearchKeyword = function (rawTerm, limit = 40) {
+  const term = String(rawTerm || '').trim();
+  if (!term) return this;
+
+  // remove existing occurrences (de-dupe)
+  this.searchHistory = this.searchHistory.filter((k) => k.term.toLowerCase() !== term.toLowerCase());
+
+  // put new term at the "front" (most recent)
+  this.searchHistory.unshift({ term, at: new Date() });
+
+  // enforce max length like a queue
+  if (this.searchHistory.length > limit) {
+    this.searchHistory = this.searchHistory.slice(0, limit);
+  }
+  return this;
+};
+
+userSchema.index({ _id: 1, "searchHistory.term": 1 });
 
 export default mongoose.model("User", userSchema);

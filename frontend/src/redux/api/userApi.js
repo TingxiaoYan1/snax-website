@@ -98,6 +98,14 @@ export const userApi = createApi({
             },
             invalidatesTags: ["AdminUsers"],
         }),
+        addSearchKeyword: builder.mutation({
+            query: (term) => ({
+                url: `/me/search-history`,
+                method: "POST",
+                body: { term },
+            }),
+            // invalidatesTags: ["SearchHistory"], // uncomment if you later add a getSearchHistory query
+        }),
     }),
 });
 
@@ -112,4 +120,5 @@ export const {
     useGetUserDetailsQuery,
     useUpdateUserMutation,
     useDeleteUserMutation,
+    useAddSearchKeywordMutation,
 } = userApi;

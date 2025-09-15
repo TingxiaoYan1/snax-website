@@ -1,0 +1,151 @@
+D:\CMU\intern for Mr.He\Snax website
+├── backend
+|  ├── app.js
+|  ├── config
+|  |  ├── config.env
+|  |  └── dbConnect.js
+|  ├── controllers
+|  |  ├── authControllers.js
+|  |  ├── cartController.js
+|  |  ├── orderControllers.js
+|  |  ├── paymentControllers.js
+|  |  ├── productControllers.js
+|  |  └── userControllers.js
+|  ├── middlewares
+|  |  ├── auth.js
+|  |  ├── catchAsyncErrors.js
+|  |  └── errors.js
+|  ├── models
+|  |  ├── cart.js
+|  |  ├── order.js
+|  |  ├── product.js
+|  |  └── user.js
+|  ├── routes
+|  |  ├── auth.js
+|  |  ├── cartRoutes.js
+|  |  ├── order.js
+|  |  ├── payment.js
+|  |  ├── products.js
+|  |  ├── user.js
+|  |  └── webhooks.js
+|  ├── seeder
+|  |  ├── data.js
+|  |  └── seeder.js
+|  └── utils
+|     ├── apiFilters.js
+|     ├── cloudinary.js
+|     ├── emailTemplates.js
+|     ├── errorHandler.js
+|     ├── orderCost.js
+|     ├── sendEmail.js
+|     └── sendToken.js
+├── frontend
+|  ├── package-lock.json
+|  ├── package.json
+|  ├── public
+|  |  ├── b215a7aa7a71218465eeaed5c2022a4a.png
+|  |  ├── favicon.ico
+|  |  ├── images
+|  |  |  ├── 404.svg
+|  |  |  ├── default_avatar.jpg
+|  |  |  ├── default_product.png
+|  |  |  ├── dimension.png
+|  |  |  ├── invoice-logo.png
+|  |  |  ├── order_success.png
+|  |  |  ├── product.jpg
+|  |  |  └── shopit_logo.png
+|  |  ├── index.html
+|  |  ├── logo192.png
+|  |  ├── logo512.png
+|  |  ├── manifest.json
+|  |  └── robots.txt
+|  ├── README.md
+|  └── src
+|     ├── App.css
+|     ├── App.js
+|     ├── components
+|     |  ├── admin
+|     |  |  ├── Dashboard.jsx
+|     |  |  ├── ListOrders.jsx
+|     |  |  ├── ListProducts.jsx
+|     |  |  ├── ListUsers.jsx
+|     |  |  ├── NewProduct.jsx
+|     |  |  ├── ProcessOrder.jsx
+|     |  |  ├── ProductReviews.jsx
+|     |  |  ├── UpdateProduct.jsx
+|     |  |  ├── UpdateUser.jsx
+|     |  |  └── UploadImages.jsx
+|     |  ├── auth
+|     |  |  ├── ForgotPassword.jsx
+|     |  |  ├── Login.jsx
+|     |  |  ├── ProtectedRoute.jsx
+|     |  |  ├── Register.jsx
+|     |  |  └── ResetPassword.jsx
+|     |  ├── cart
+|     |  |  ├── Cart.jsx
+|     |  |  ├── CheckoutSteps.jsx
+|     |  |  ├── ConfirmOrder.jsx
+|     |  |  ├── PaymentMethod.jsx
+|     |  |  └── Shipping.jsx
+|     |  ├── charts
+|     |  |  └── SalesChart.jsx
+|     |  ├── checkout
+|     |  |  └── SquareReturn.jsx
+|     |  ├── Home.jsx
+|     |  ├── invoice
+|     |  |  ├── invoice.css
+|     |  |  └── Invoice.jsx
+|     |  ├── layout
+|     |  |  ├── AdminLayout.jsx
+|     |  |  ├── CustomPagination.jsx
+|     |  |  ├── Filters.jsx
+|     |  |  ├── Footer.jsx
+|     |  |  ├── Header.jsx
+|     |  |  ├── Loader.jsx
+|     |  |  ├── MetaData.jsx
+|     |  |  ├── Search.jsx
+|     |  |  ├── SideMenu.jsx
+|     |  |  └── UserLayout.jsx
+|     |  ├── order
+|     |  |  ├── MyOrders.jsx
+|     |  |  └── OrderDetails.jsx
+|     |  ├── product
+|     |  |  ├── ProductDetails.jsx
+|     |  |  └── ProductItem.jsx
+|     |  ├── reviews
+|     |  |  ├── ListReviews.jsx
+|     |  |  └── NewReview.jsx
+|     |  ├── routes
+|     |  |  ├── adminRoutes.jsx
+|     |  |  └── userRoutes.jsx
+|     |  └── user
+|     |     ├── Profile.jsx
+|     |     ├── UpdatePassword.jsx
+|     |     ├── UpdateProfile.jsx
+|     |     └── UploadAvatar.jsx
+|     ├── constants
+|     |  └── constants.js
+|     ├── helpers
+|     |  └── helpers.js
+|     ├── index.js
+|     ├── redux
+|     |  ├── api
+|     |  |  ├── authApi.js
+|     |  |  ├── cartApi.js
+|     |  |  ├── orderApi.js
+|     |  |  ├── paymentsApi.js
+|     |  |  ├── productsApi.js
+|     |  |  └── userApi.js
+|     |  ├── features
+|     |  |  ├── cartSlice.js
+|     |  |  └── userSlice.js
+|     |  └── store.js
+|     └── setupProxy.js
+├── package-lock.json
+├── package.json
+├── README.md
+└── repo-structure.txt
+
+directory: 4402 file: 31209
+
+ignored: directory (464)

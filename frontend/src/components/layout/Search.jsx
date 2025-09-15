@@ -1,39 +1,44 @@
-import React, { useState } from 'react'
-import {useNavigate} from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAddSearchKeywordMutation } from "../../redux/api/userApi";
 
 const Search = () => {
   const [keyword, setKeyword] = useState("");
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
-  const submitHandler = (e) => {
+  const [addSearchKeyword] = useAddSearchKeywordMutation();
+  
+
+  const submitHandler = async (e) => {
     e.preventDefault();
-
-    if(keyword?.trim()) {
-        navigate(`/?keyword=${keyword}`)
+    const term = keyword.trim();
+    if (term) {
+      addSearchKeyword(term).catch(() => {}); // fire-and-forget; don't block navigation
+      navigate(`/?keyword=${encodeURIComponent(term)}`);
     } else {
-        navigate(`/`)
+      navigate(`/`);
     }
-  }
+  };
 
   return (
     <form onSubmit={submitHandler}>
-        <div className="input-group">
+      <div className="input-group">
         <input
-            type="text"
-            id="search_field"
-            aria-describedby="search_btn"
-            className="form-control"
-            placeholder="Enter Product Name ..."
-            name="keyword"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+          type="text"
+          id="search_field"
+          aria-describedby="search_btn"
+          className="form-control"
+          placeholder="Enter Product Name ..."
+          name="keyword"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
         />
         <button id="search_btn" className="btn" type="submit">
-            <i className="fa fa-search" aria-hidden="true"></i>
+          <i className="fa fa-search" aria-hidden="true"></i>
         </button>
-        </div>
+      </div>
     </form>
-  )
-}
+  );
+};
 
-export default Search
+export default Search;

@@ -24,7 +24,6 @@ const MyOrders = () => {
     }
 
     if(orderSuccess) {
-        dispatch(clearCart());
         navigate("/me/orders");
     }
   }, [error,orderSuccess]);
@@ -61,7 +60,7 @@ const MyOrders = () => {
         rows: [],
     };
 
-    data?.orders?.forEach((order) => {
+    data?.orders?.slice().reverse().forEach((order) => {
         orders.rows.push({
             id: order?._id,
             amount: `$${order?.totalAmount}`,

@@ -1,21 +1,22 @@
-import React from 'react'
-import MetaData from '../layout/MetaData'
-import { useSelector } from 'react-redux';
-import {Link} from "react-router-dom";
+import React from "react";
+import MetaData from "../layout/MetaData";
+import { useSelector } from "react-redux";
+import { Link } from "react-router-dom";
+import CheckoutSteps from "./CheckoutSteps";
+import { useGetCartQuery } from "../../redux/api/cartApi";
 import { calculateOrderCost } from '../../helpers/helpers';
-import CheckoutSteps from './CheckoutSteps';
 
 const ConfirmOrder = () => {
- 
-  const {cartItems, shippingInfo} = useSelector((state)=> state.cart);
-  const { user } = useSelector((state)=> state.auth);
+  const { user } = useSelector((state) => state.auth);
+  const { shippingInfo } = useSelector((state) => state.cart); // UI-only storage
+
+  const { data, isLoading, isError, error } = useGetCartQuery();
+  const cartItems = data?.items || [];
 
   const {itemsPrice,
         shippingPrice,
         taxPrice,
         totalPrice,} = calculateOrderCost(cartItems);
-
-
 
   return (
     <>
@@ -91,4 +92,4 @@ const ConfirmOrder = () => {
   )
 }
 
-export default ConfirmOrder
+export default ConfirmOrder;

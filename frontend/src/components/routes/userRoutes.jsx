@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 import { Route } from "react-router-dom";
 import Home from "../Home";
 import ProductDetails from "../product/ProductDetails";
@@ -18,76 +18,128 @@ import PaymentMethod from "../cart/PaymentMethod";
 import MyOrders from "../order/MyOrders";
 import OrderDetails from "../order/OrderDetails";
 import Invoice from "../invoice/Invoice";
+import SquareReturn from "../checkout/SquareReturn";
 
 const userRoutes = () => {
   return (
     <>
       <Route path="/" element={<Home />} />
-        <Route path="/product/:id" element={<ProductDetails />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+      <Route path="/product/:id" element={<ProductDetails />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-        <Route path="/password/forgot" element={<ForgotPassword />} />
-        <Route path="/password/reset/:token" element={<ResetPassword />} />
+      <Route path="/password/forgot" element={<ForgotPassword />} />
+      <Route path="/password/reset/:token" element={<ResetPassword />} />
 
-        <Route path="/me/profile" element={
-            <ProtectedRoute>
+      <Route
+        path="/me/profile"
+        element={
+          <ProtectedRoute>
             <Profile />
-            </ProtectedRoute>
-        } />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="/me/update_profile" element={
-            <ProtectedRoute>
+      <Route
+        path="/me/update_profile"
+        element={
+          <ProtectedRoute>
             <UpdateProfile />
-            </ProtectedRoute>
-        } />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="/me/upload_avatar" element={
-            <ProtectedRoute>
+      <Route
+        path="/me/upload_avatar"
+        element={
+          <ProtectedRoute>
             <UploadAvatar />
-            </ProtectedRoute>
-        } />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="/me/update_password" element={
-            <ProtectedRoute>
+      <Route
+        path="/me/update_password"
+        element={
+          <ProtectedRoute>
             <UpdatePassword />
-            </ProtectedRoute>
-        } />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/shipping" element={<ProtectedRoute><Shipping /></ProtectedRoute>} />
+      <Route
+        path="/cart"
+        element={
+          <ProtectedRoute>
+            <Cart />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="/confirm_order" element={
-            <ProtectedRoute>
+      <Route
+        path="/shipping"
+        element={
+          <ProtectedRoute>
+            <Shipping />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/confirm_order"
+        element={
+          <ProtectedRoute>
             <ConfirmOrder />
-            </ProtectedRoute>
-        } />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="/payment_method" element={
-            <ProtectedRoute>
+      <Route
+        path="/payment_method"
+        element={
+          <ProtectedRoute>
             <PaymentMethod />
-            </ProtectedRoute>
-        } />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="/me/orders" element={
-            <ProtectedRoute>
+      <Route
+        path="/square/return"
+        element={
+          <ProtectedRoute>
+            <SquareReturn />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/me/orders"
+        element={
+          <ProtectedRoute>
             <MyOrders />
-            </ProtectedRoute>
-        } />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="/me/order/:id" element={
-            <ProtectedRoute>
+      <Route
+        path="/me/order/:id"
+        element={
+          <ProtectedRoute>
             <OrderDetails />
-            </ProtectedRoute>
-        } />
-        
-        <Route path="/invoice/order/:id" element={
-            <ProtectedRoute>
-            <Invoice />
-            </ProtectedRoute>
-        } />
-    </>
-  )
-}
+          </ProtectedRoute>
+        }
+      />
 
-export default userRoutes
+      <Route
+        path="/invoice/order/:id"
+        element={
+          <ProtectedRoute>
+            <Invoice />
+          </ProtectedRoute>
+        }
+      />
+    </>
+  );
+};
+
+export default userRoutes;

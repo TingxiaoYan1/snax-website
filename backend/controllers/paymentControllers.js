@@ -1,5 +1,9 @@
 import catchAsyncErrors from "../middlewares/catchAsyncErrors.js";
+import { calculateOrderCost } from "../utils/orderCost.js";
+import Cart from "../models/cart.js";
 import Order from "../models/order.js";
+import ErrorHandler from "../utils/errorHandler.js";
+import Product from "../models/product.js";
 
 // backend/controllers/paymentControllers.js
 import { Client } from "square/legacy";
@@ -33,41 +37,65 @@ export const squarePing = async (req, res ) => {
 
 export const squareCheckoutSession = catchAsyncErrors(async (req, res,next) => {
   try {
+    console.log("[Square] ENV:", process.env.SQUARE_ENV);
+    console.log("[Square] Token prefix:", process.env.SQUARE_ACCESS_TOKEN?.slice(0, 8));
+    console.log("[Square] Location:", process.env.SQUARE_LOCATION_ID);
     const client = getSquareClient();
     const checkoutApi = client.checkoutApi;
 
-    const body = req.body;
-
-    // Coerce incoming numbers (your UI sometimes sends strings)
-    const shippingAmountCents = Math.round(Number(body?.shippingAmount || 0) * 100);
-    const taxAmountCents = Math.round(Number(body?.taxAmount || 0) * 100);
+    const cart = await Cart.findOne({ user: req.user._id })
+      .populate({ path: "items.product", select: "name price stock images" });
     
-    const lineItems = (body?.orderItems || []).map(i => ({
-      name: i?.name,
-      note: JSON.stringify({
-        productId: i?.product,
-        image: i?.image
-    }),
-      quantity: String(i.quantity ?? 1),
+    if (!cart) {
+      console.warn("Square checkout: cart not found for user", req.user?._id);
+    } else {
+      console.log("Square checkout: raw cart items", cart.items?.map(i => ({
+        product: String(i.product?._id || i.product),
+        name: i.product?.name,
+        price: i.product?.price,
+        qty: i.quantity,
+        stock: i.product?.stock
+      })));
+    }
+      
+    if (!cart || cart.items.length === 0) {
+      return next(new ErrorHandler("Your cart is empty", 400));
+    }
+
+
+    const orderItems = cart.items.map(ci => ({
+      name: ci.product.name,
+      quantity: String(ci.quantity),
+      price: ci.product.price,
+      image: ci.product.images?.[0]?.url,
+      productId: ci.product._id,
+    }));
+
+    const { itemsPrice, shippingPrice, taxPrice } = calculateOrderCost(
+      orderItems.map(({ price, quantity }) => ({ price, quantity }))
+    );
+
+    const lineItems = orderItems.map(i => ({
+      name: i.name,
+      note: JSON.stringify({ productId: i.productId, image: i.image }),
+      quantity: i.quantity,
       basePriceMoney: { amount: Math.round(Number(i.price) * 100), currency: "USD" },
     }));
 
-    // Add Shipping as a line item (use value from frontend)
-    if (shippingAmountCents > 0) {
-        lineItems.push({
+    if (Number(shippingPrice) > 0) {
+      lineItems.push({
         name: "shipping",
         quantity: "1",
-        basePriceMoney: { amount: shippingAmountCents, currency: "USD" },
-        });
+        basePriceMoney: { amount: Math.round(Number(shippingPrice) * 100), currency: "USD" },
+      });
     }
 
-    // Add Tax as a fixed line item so Square total matches your UI
-    if (taxAmountCents > 0) {
-        lineItems.push({
+    if (Number(taxPrice) > 0) {
+      lineItems.push({
         name: "tax",
         quantity: "1",
-        basePriceMoney: { amount: taxAmountCents, currency: "USD" },
-        });
+        basePriceMoney: { amount: Math.round(Number(taxPrice) * 100), currency: "USD" },
+      });
     }
 
     const order = {
@@ -76,11 +104,11 @@ export const squareCheckoutSession = catchAsyncErrors(async (req, res,next) => {
       referenceId: req.user._id.toString(),
       metadata: {
         shippingInfo: JSON.stringify({
-            address: body?.shippingInfo?.address,
-            city: body?.shippingInfo?.city,
-            phoneNo: body?.shippingInfo?.phoneNo,
-            zipCode: body?.shippingInfo?.zipCode,
-            country: body?.shippingInfo?.country
+          address: req.body?.shippingInfo?.address,
+          city: req.body?.shippingInfo?.city,
+          phoneNo: req.body?.shippingInfo?.phoneNo,
+          zipCode: req.body?.shippingInfo?.zipCode,
+          country: req.body?.shippingInfo?.country
         })
       }
     };
@@ -89,17 +117,28 @@ export const squareCheckoutSession = catchAsyncErrors(async (req, res,next) => {
       idempotencyKey: crypto.randomUUID(),
       order,
       checkoutOptions: {
-        redirectUrl: `${process.env.FRONTEND_URL}/me/orders?order_success=true`,
+        //redirectUrl: `${process.env.FRONTEND_URL}/me/orders?order_success=true`,
+        redirectUrl: `${process.env.FRONTEND_URL}/square/return`,
         merchantSupportEmail: "support@snaxplanet.com",
       },
     });
 
     res.json({ url: result.paymentLink.url });
   } catch (e) {
-    console.log("[SQUARE API ERROR status]:", e?.statusCode);
-    console.log("[SQUARE API ERROR result]:", JSON.stringify(e?.result, null, 2));
-    console.log("[SQUARE API ERROR message]:", e?.message);
-    res.status(e?.statusCode || 500).json({ from: "square", status: e?.statusCode, result: e?.result, message: e?.message });
+    const status = e?.statusCode || e?.status || 500;
+    const detail =
+      e?.result?.errors?.[0]?.detail ||
+      e?.message ||
+      "Square checkout failed";
+
+    console.error("Square checkout error:", {
+      status,
+      message: e?.message,
+      detail,
+      result: e?.result,
+    });
+
+    return res.status(status).json({ message: detail, code: e?.result?.errors?.[0]?.code });
   }
 });
 
@@ -143,6 +182,11 @@ export const squareWebhook = catchAsyncErrors(async (req, res) => {
     .createHmac("sha1", process.env.SQUARE_WEBHOOK_SIGNATURE_KEY)
     .update(notificationUrl + (typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody)))
     .digest("base64");
+  
+  console.log("[WH] URL used:", notificationUrl);
+  console.log("[WH] provided:", providedSig);
+  console.log("[WH] expected:", expectedSig);
+
 
   if (providedSig !== expectedSig) {
     return res.status(401).json({ message: "Invalid signature" });
@@ -156,7 +200,7 @@ export const squareWebhook = catchAsyncErrors(async (req, res) => {
   }
 
   // These were missing before
-     const client = getSquareClient();
+  const client = getSquareClient();
   const squareOrderId = payment?.order_id;
   console.log("[WH] payment.order_id:", squareOrderId);
  
@@ -220,7 +264,7 @@ export const squareWebhook = catchAsyncErrors(async (req, res) => {
     const totalAmount = totalCents / 100;
     const user = sqOrder?.referenceId || null;
 
-    itemsPrice = itemsPrice.toFixed(2);
+    itemsPrice = Number(itemsPrice.toFixed(2));
 
     const paymentInfo = {
         id: payment?.id,
@@ -247,6 +291,14 @@ export const squareWebhook = catchAsyncErrors(async (req, res) => {
     };
 
     console.log("[WH] creating Order with:", orderData);
-    await Order.create(orderData);
+    const order = await Order.create(orderData);
+    for (const it of order.orderItems || []) {
+      if (it.product) {
+        await Product.updateOne({ _id: it.product }, { $inc: { stock: -it.quantity } });
+      }
+    }
+    if (user) {
+      await Cart.updateOne({ user }, { $set: { items: [] } });
+    }
     return res.status(200).json({ success: true });
 });
