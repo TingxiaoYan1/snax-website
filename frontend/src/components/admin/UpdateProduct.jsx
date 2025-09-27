@@ -10,10 +10,11 @@ import { PRODUCT_CATEGORIES } from "../../constants/constants";
 const UpdateProduct = () => {
 
   const navigate= useNavigate();
-  const params = useParams()
+  const params = useParams();
 
   const[product,setProduct] = useState({
     name: "",
+    chinesename: "",
     description:"",
     price: "",
     category: PRODUCT_CATEGORIES?.[0],
@@ -30,6 +31,7 @@ const UpdateProduct = () => {
     if(data?.product){
         setProduct({
             name: data?.product?.name,
+            chinesename: data?.product?.chinesename,
             description: data?.product?.description,
             price: data?.product?.price,
             category: data?.product?.category,
@@ -47,7 +49,7 @@ const UpdateProduct = () => {
     }
   }, [error,isSuccess,data]);
 
-  const {name,description,price,category,stock,seller} = product;
+  const {name,chinesename,description,price,category,stock,seller} = product;
 
   const onChange = (e) => {
     setProduct({ ...product, [e.target.name]: e.target.value });
@@ -73,6 +75,18 @@ const UpdateProduct = () => {
               className="form-control"
               name="name"
               value={name}
+              onChange={onChange}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="chinesename_field" className="form-label"> Chinese Name </label>
+            <input
+              type="text"
+              id="chinesename_field"
+              className="form-control"
+              name="chinesename"
+              value={chinesename}
               onChange={onChange}
             />
           </div>

@@ -43,6 +43,7 @@ const userSchema = new mongoose.Schema({
         ],
         default: []
     },
+
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
@@ -103,5 +104,15 @@ userSchema.methods.addSearchKeyword = function (rawTerm, limit = 40) {
 };
 
 userSchema.index({ _id: 1, "searchHistory.term": 1 });
+
+userSchema.virtual("coupons", {
+  ref: "Coupon",
+  localField: "_id",
+  foreignField: "assignedTo",
+  justOne: false,
+});
+
+userSchema.set("toJSON", { virtuals: true });
+userSchema.set("toObject", { virtuals: true });
 
 export default mongoose.model("User", userSchema);

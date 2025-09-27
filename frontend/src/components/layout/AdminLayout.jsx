@@ -33,6 +33,16 @@ const AdminLayout = ({children}) => {
             url: "/admin/reviews",
             icon: "fas fa-star",
         },
+        {
+            name: "Coupons",
+            url: "/admin/coupons",
+            icon: "fas fa-money",
+        },
+        {
+            name: "Review Coupons",
+            url: "/admin/coupons/review",
+            icon: "fas fa-list",
+        },
     ];
 
   return (

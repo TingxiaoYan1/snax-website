@@ -23,6 +23,16 @@ const UserLayout = ({children}) => {
             url: "/me/update_password",
             icon: "fas fa-lock",
         },
+        {
+            name: "Fetch Coupon",
+            url: "/me/fetch_coupon",
+            icon: "fas fa-lock",
+        },
+        {
+            name: "Review My Coupons",
+            url: "/me/coupons",
+            icon: "fas fa-list",
+        },
     ];
 
   return (

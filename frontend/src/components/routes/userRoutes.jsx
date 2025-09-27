@@ -19,6 +19,8 @@ import MyOrders from "../order/MyOrders";
 import OrderDetails from "../order/OrderDetails";
 import Invoice from "../invoice/Invoice";
 import SquareReturn from "../checkout/SquareReturn";
+import FetchCoupon from "../layout/FetchCoupon";
+import MyCoupons from "../layout/MyCoupons";
 
 const userRoutes = () => {
   return (
@@ -135,6 +137,24 @@ const userRoutes = () => {
         element={
           <ProtectedRoute>
             <Invoice />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/me/fetch_coupon"
+        element={
+          <ProtectedRoute>
+            <FetchCoupon />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/me/coupons"
+        element={
+          <ProtectedRoute>
+            <MyCoupons />
           </ProtectedRoute>
         }
       />

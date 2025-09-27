@@ -35,6 +35,7 @@ import orderRoutes from "./routes/order.js";
 import paymentRoutes from "./routes/payment.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import userRoutes from "./routes/user.js";
+import couponRoutes from "./routes/coupons.js";
 
 app.use("/api/v1", productRoutes);
 app.use("/api/v1", authRoutes);
@@ -42,6 +43,7 @@ app.use("/api/v1", orderRoutes);
 app.use("/api/v1", paymentRoutes);
 app.use("/api/v1", cartRoutes);
 app.use("/api/v1", userRoutes);
+app.use("/api/v1", couponRoutes);
 
 // Using error middleware
 app.use(errorMiddleware);

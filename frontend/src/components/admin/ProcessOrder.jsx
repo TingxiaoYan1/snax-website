@@ -66,7 +66,7 @@ const ProcessOrder = () => {
             </tr>
             <tr>
               <th scope="row">Order Status</th>
-              <td className={String(orderStatus).includes("Delivered") ? "greenColor" : "redColor"}>
+              <td className={String(orderStatus).includes("Delivered")||String(orderStatus).includes("Refunded") ? "greenColor" : "redColor"}>
                 <b>{orderStatus}</b>
               </td>
             </tr>
@@ -157,6 +157,8 @@ const ProcessOrder = () => {
             <option value="Processing">Processing</option>
             <option value="Shipped">Shipped</option>
             <option value="Delivered">Delivered</option>
+            <option value="Refunding">Refunding</option>
+            <option value="Refunded">Refunded</option>
           </select>
         </div>
 

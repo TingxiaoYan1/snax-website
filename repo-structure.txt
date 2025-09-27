@@ -7,6 +7,7 @@ D:\CMU\intern for Mr.He\Snax website
 |  ├── controllers
 |  |  ├── authControllers.js
 |  |  ├── cartController.js
+|  |  ├── couponControllers.js
 |  |  ├── orderControllers.js
 |  |  ├── paymentControllers.js
 |  |  ├── productControllers.js
@@ -17,12 +18,15 @@ D:\CMU\intern for Mr.He\Snax website
 |  |  └── errors.js
 |  ├── models
 |  |  ├── cart.js
+|  |  ├── coupon.js
+|  |  ├── couponRedemption.js
 |  |  ├── order.js
 |  |  ├── product.js
 |  |  └── user.js
 |  ├── routes
 |  |  ├── auth.js
 |  |  ├── cartRoutes.js
+|  |  ├── coupons.js
 |  |  ├── order.js
 |  |  ├── payment.js
 |  |  ├── products.js
@@ -43,17 +47,20 @@ D:\CMU\intern for Mr.He\Snax website
 |  ├── package-lock.json
 |  ├── package.json
 |  ├── public
-|  |  ├── b215a7aa7a71218465eeaed5c2022a4a.png
 |  |  ├── favicon.ico
 |  |  ├── images
 |  |  |  ├── 404.svg
+|  |  |  ├── bar.png
 |  |  |  ├── default_avatar.jpg
 |  |  |  ├── default_product.png
 |  |  |  ├── dimension.png
+|  |  |  ├── footer.png
 |  |  |  ├── invoice-logo.png
+|  |  |  ├── logo mark.png
 |  |  |  ├── order_success.png
 |  |  |  ├── product.jpg
-|  |  |  └── shopit_logo.png
+|  |  |  ├── shopit_logo.png
+|  |  |  └── snake.png
 |  |  ├── index.html
 |  |  ├── logo192.png
 |  |  ├── logo512.png
@@ -61,10 +68,12 @@ D:\CMU\intern for Mr.He\Snax website
 |  |  └── robots.txt
 |  ├── README.md
 |  └── src
+|     ├── AAtoken.css
 |     ├── App.css
 |     ├── App.js
 |     ├── components
 |     |  ├── admin
+|     |  |  ├── AdminCoupons.jsx
 |     |  |  ├── Dashboard.jsx
 |     |  |  ├── ListOrders.jsx
 |     |  |  ├── ListProducts.jsx
@@ -72,6 +81,7 @@ D:\CMU\intern for Mr.He\Snax website
 |     |  |  ├── NewProduct.jsx
 |     |  |  ├── ProcessOrder.jsx
 |     |  |  ├── ProductReviews.jsx
+|     |  |  ├── ReviewCoupons.jsx
 |     |  |  ├── UpdateProduct.jsx
 |     |  |  ├── UpdateUser.jsx
 |     |  |  └── UploadImages.jsx
@@ -98,11 +108,13 @@ D:\CMU\intern for Mr.He\Snax website
 |     |  ├── layout
 |     |  |  ├── AdminLayout.jsx
 |     |  |  ├── CustomPagination.jsx
+|     |  |  ├── FetchCoupon.jsx
 |     |  |  ├── Filters.jsx
 |     |  |  ├── Footer.jsx
 |     |  |  ├── Header.jsx
 |     |  |  ├── Loader.jsx
 |     |  |  ├── MetaData.jsx
+|     |  |  ├── MyCoupons.jsx
 |     |  |  ├── Search.jsx
 |     |  |  ├── SideMenu.jsx
 |     |  |  └── UserLayout.jsx
@@ -132,12 +144,15 @@ D:\CMU\intern for Mr.He\Snax website
 |     |  ├── api
 |     |  |  ├── authApi.js
 |     |  |  ├── cartApi.js
+|     |  |  ├── couponsApi.js
 |     |  |  ├── orderApi.js
 |     |  |  ├── paymentsApi.js
 |     |  |  ├── productsApi.js
 |     |  |  └── userApi.js
 |     |  ├── features
 |     |  |  ├── cartSlice.js
+|     |  |  ├── couponSlice.js
+|     |  |  ├── langSlice.js
 |     |  |  └── userSlice.js
 |     |  └── store.js
 |     └── setupProxy.js
@@ -146,6 +161,6 @@ D:\CMU\intern for Mr.He\Snax website
 ├── README.md
 └── repo-structure.txt
 
-directory: 4402 file: 31209
+directory: 4402 file: 31224
 
 ignored: directory (464)

@@ -6,6 +6,11 @@ const productSchema = new mongoose.Schema({
         required: [true, "Please enter product name"],
         maxLength: [200, "Product name cannot exceed 200 Characters"],
     },
+    chinesename:{
+        type: String,
+        // required: [true, "请输入中文品名"],
+        maxLength: [200, "Product name cannot exceed 200 Characters"],
+    },
     price: {
         type: Number,
         required: [true, "Please enter product price"],
@@ -85,6 +90,14 @@ const productSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true,
+    },
+    chinesedescription:{
+        type: String,
+        // required: [true, "请输入中文介绍"],
+    },
+    expiredate:{
+        type: String,
+        default: "1 Month",
     },
   },
   { timestamps: true},

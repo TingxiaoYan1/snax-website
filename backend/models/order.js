@@ -84,12 +84,20 @@ const orderSchema = new mongoose.Schema({
     orderStatus: {
         type: String,
         enum: {
-            values: ["Processing","Shipped", "Delivered"],
+            values: ["Processing","Shipped", "Delivered", "Refunding", "Refunded"],
             message: "Please select correct order status",
         },
         default: "Processing",
     },
     deliveredAt: Date,
+    coupon: {
+        couponId: { type: mongoose.Schema.Types.ObjectId, ref: "Coupon" },
+        scope: { type: String, enum: ["user", "global"] },
+        code: String,
+        percentage: Number,       // e.g., 15 (%)
+        maxDeduction: Number,     // e.g., 10 (USD cap)
+        discountApplied: Number,  // actual $ deducted on this order
+    },
 },{timestamps: true});
 
 export default mongoose.model("Order",orderSchema);
