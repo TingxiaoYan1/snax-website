@@ -44,6 +44,11 @@ const userSchema = new mongoose.Schema({
         default: []
     },
 
+    emailVerified: { type: Boolean, default: false },
+    emailVerifyCodeHash: { type: String, select: false },
+    emailVerifyCodeExpire: { type: Date, select: false },
+    emailVerifyAttempts: { type: Number, default: 0, select: false },
+
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
@@ -114,5 +119,24 @@ userSchema.virtual("coupons", {
 
 userSchema.set("toJSON", { virtuals: true });
 userSchema.set("toObject", { virtuals: true });
+
+function makeCode(len = 6) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // avoid ambiguous chars
+  let s = "";
+  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+if (!userSchema.methods.setEmailVerifyCode) {
+  userSchema.methods.setEmailVerifyCode = function () {
+    const code = makeCode(6);
+    this.emailVerifyCodeHash = crypto.createHash("sha256").update(code).digest("hex");
+    const minutes = Number(process.env.VERIFY_EMAIL_EXPIRE_MIN || 30);
+    this.emailVerifyCodeExpire = Date.now() + minutes * 60 * 1000;
+    this.emailVerifyAttempts = 0;
+    return code;
+  };
+}
+
 
 export default mongoose.model("User", userSchema);

@@ -13,6 +13,8 @@ import {
     updateUser,
     deleteUser,
     uploadAvatar,
+    sendVerificationCode,
+    verifyEmailCode,
 } from "../controllers/authControllers.js";
 const router = express.Router();
 
@@ -20,6 +22,8 @@ import {authorizeRoles,isAuthenticatedUser} from "../middlewares/auth.js";
 
 
 router.route("/register").post(registerUser);
+router.post("/email/code/send", sendVerificationCode);
+router.post("/email/code/verify", verifyEmailCode);
 router.route("/login").post(loginUser);
 router.route("/logout").get(logout);
 

@@ -571,3 +571,29 @@ export const getResetPasswordTemplate = (username, resetUrl) => `
   </body>
 </html>
 `;
+
+
+
+export const getVerifyCodeTemplate = (username, code) => `
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Your Snack Planet verification code</title>
+    <style>
+      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f6f7fb;color:#222}
+      .card{max-width:560px;margin:24px auto;background:#fff;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+      .code{font-size:28px;letter-spacing:.24em;font-weight:700;border:2px dashed #ddd;display:inline-block;padding:.5rem 1rem;margin:.5rem 0}
+      .muted{color:#666}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Hi ${username || "there"} 👋</h2>
+      <p>Use this code to verify your email for <b>Snack Planet</b>:</p>
+      <div class="code">${code}</div>
+      <p class="muted">This code expires in ${process.env.VERIFY_EMAIL_EXPIRE_MIN || 30} minutes.</p>
+      <p>If you didn’t request this, you can safely ignore this email.</p>
+    </div>
+  </body>
+</html>
+`;

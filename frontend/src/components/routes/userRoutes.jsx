@@ -21,6 +21,7 @@ import Invoice from "../invoice/Invoice";
 import SquareReturn from "../checkout/SquareReturn";
 import FetchCoupon from "../layout/FetchCoupon";
 import MyCoupons from "../layout/MyCoupons";
+import VerifyEmailCode from "../auth/VerifyEmailCode";
 
 const userRoutes = () => {
   return (
@@ -32,6 +33,8 @@ const userRoutes = () => {
 
       <Route path="/password/forgot" element={<ForgotPassword />} />
       <Route path="/password/reset/:token" element={<ResetPassword />} />
+
+      <Route path="/verify-email-code" element={<VerifyEmailCode />} />
 
       <Route
         path="/me/profile"

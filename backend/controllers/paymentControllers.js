@@ -17,6 +17,7 @@ import {
   finalizeCouponRedemption,
 } from "./couponControllers.js";
 
+
 /* ------------------------------ Square client ----------------------------- */
 
 function getSquareClient() {
