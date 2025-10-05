@@ -11,13 +11,20 @@ import {
     canUserReview,
     getAdminProducts,
     uploadProductImages,
-    deleteProductImages
+    deleteProductImages,
+    getInitializedCategories,
+    getInitializedTags,
+    getRandomProducts
 } from "../controllers/productControllers.js";
 import { authorizeRoles, isAuthenticatedUser } from "../middlewares/auth.js";
 const router = express.Router();
 
 
 router.route("/products").get(getProducts);
+router.route("/products/categories").get(getInitializedCategories);
+router.route("/products/tags/schema").get(getInitializedTags);
+router.get("/products/random", getRandomProducts);
+
 router.route("/admin/products")
     .post(isAuthenticatedUser, authorizeRoles("admin"),newProduct)
     .get(isAuthenticatedUser, authorizeRoles("admin"),getAdminProducts);

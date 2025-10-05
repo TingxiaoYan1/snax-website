@@ -1,11 +1,13 @@
+import mongoose from "mongoose";
 import Coupon from "../models/coupon.js";
 import CouponRedemption from "../models/couponRedemption.js";
 import User from "../models/user.js";
+import Product from "../models/product.js";
 import catchAsyncErrors from "../middlewares/catchAsyncErrors.js";
 import ErrorHandler from "../utils/errorHandler.js";
 
 /** =========================
- * ADMIN: create user coupon
+ * ADMIN: create user percentage coupon (existing)
  * POST /api/v1/admin/coupons
  * body: { userId, code, percentage, daysValid, note?, maxDeduction? }
  * ========================= */
@@ -36,7 +38,6 @@ export const giveCoupon = catchAsyncErrors(async (req, res, next) => {
   const now = Date.now();
   const expiresAt = new Date(now + daysValid * 24 * 60 * 60 * 1000);
 
-  // prevent duplicate active coupon with same code for this user
   const existing = await Coupon.findOne({
     scope: "user",
     code,
@@ -49,6 +50,7 @@ export const giveCoupon = catchAsyncErrors(async (req, res, next) => {
   }
 
   const coupon = await Coupon.create({
+    type: "percentage",
     scope: "user",
     code,
     percentage,
@@ -63,7 +65,160 @@ export const giveCoupon = catchAsyncErrors(async (req, res, next) => {
 });
 
 /** =========================
- * USER: list my coupons
+ * ADMIN: give user FREE-GIFT coupon (separate place)
+ * POST /api/v1/admin/coupons/freegift/user
+ * body: { userId, code, daysValid, giftProductId, giftQty, threshold, note? }
+ * ========================= */
+export const giveFreeGiftCouponToUser = catchAsyncErrors(async (req, res, next) => {
+  let { userId, code, daysValid, giftProductId, giftQty, threshold, note } = req.body || {};
+
+  if (!userId || !code || daysValid == null || !giftProductId || !giftQty || threshold == null) {
+    return next(new ErrorHandler("userId, code, daysValid, giftProductId, giftQty, threshold are required", 400));
+  }
+  code = String(code).toUpperCase().trim();
+  daysValid = parseInt(daysValid, 10);
+  giftQty = parseInt(giftQty, 10);
+  threshold = Number(threshold);
+
+  if (!mongoose.isValidObjectId(userId)) return next(new ErrorHandler("Invalid userId", 400));
+  if (!mongoose.isValidObjectId(giftProductId)) return next(new ErrorHandler("Invalid giftProductId", 400));
+  if (!Number.isInteger(daysValid) || daysValid <= 0) return next(new ErrorHandler("daysValid must be a positive integer", 400));
+  if (!Number.isInteger(giftQty) || giftQty <= 0) return next(new ErrorHandler("giftQty must be a positive integer", 400));
+  if (!(threshold >= 0)) return next(new ErrorHandler("threshold must be >= 0", 400));
+
+  const [user, product] = await Promise.all([
+    User.findById(userId).select("_id"),
+    Product.findById(giftProductId).select("_id"),
+  ]);
+  if (!user) return next(new ErrorHandler("User not found", 404));
+  if (!product) return next(new ErrorHandler("Gift product not found", 404));
+
+  const expiresAt = new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000);
+
+  const dup = await Coupon.findOne({
+    scope: "user",
+    type: "free_gift",
+    code,
+    assignedTo: user._id,
+    used: false,
+    expiresAt: { $gt: new Date() },
+  }).lean();
+  if (dup) return next(new ErrorHandler("Active free-gift coupon with this code already exists for user", 409));
+
+  const coupon = await Coupon.create({
+    type: "free_gift",
+    scope: "user",
+    code,
+    assignedTo: user._id,
+    expiresAt,
+    giftProduct: product._id,
+    giftQty,
+    threshold,
+    note,
+    createdBy: req.user?._id,
+  });
+
+  res.status(201).json({ success: true, coupon });
+});
+
+/** =========================
+ * ADMIN: create GLOBAL percentage coupon (existing)
+ * POST /api/v1/admin/coupons/global
+ * body: { code, percentage, daysValid, note?, maxRedemptions?, perUserLimit?, startAt?, maxDeduction? }
+ * ========================= */
+export const adminCreateGlobalCoupon = catchAsyncErrors(async (req, res, next) => {
+  let { code, percentage, daysValid, note, maxRedemptions, perUserLimit = 1, startAt, maxDeduction } = req.body;
+
+  if (!code || percentage == null || daysValid == null) {
+    return next(new ErrorHandler("code, percentage, daysValid are required", 400));
+  }
+  if (maxDeduction != null && !(Number(maxDeduction) >= 0)) {
+    return next(new ErrorHandler("maxDeduction must be >= 0", 400));
+  }
+
+  code = String(code).toUpperCase().trim();
+  percentage = Number(percentage);
+  daysValid = parseInt(daysValid, 10);
+
+  if (!(percentage >= 1 && percentage <= 100)) {
+    return next(new ErrorHandler("percentage 1–100", 400));
+  }
+  if (!Number.isInteger(daysValid) || daysValid <= 0) {
+    return next(new ErrorHandler("daysValid must be a positive int", 400));
+  }
+
+  const exists = await Coupon.findOne({ scope: "global", code }).lean();
+  if (exists) return next(new ErrorHandler("Global coupon with this code already exists", 409));
+
+  const expiresAt = new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000);
+
+  const coupon = await Coupon.create({
+    type: "percentage",
+    scope: "global",
+    code,
+    percentage,
+    expiresAt,
+    startAt: startAt ? new Date(startAt) : undefined,
+    maxRedemptions: maxRedemptions ? Number(maxRedemptions) : undefined,
+    perUserLimit: perUserLimit ? Number(perUserLimit) : 1,
+    maxDeduction: maxDeduction != null ? Number(maxDeduction) : undefined,
+    note,
+    createdBy: req.user?._id,
+  });
+
+  res.status(201).json({ success: true, coupon });
+});
+
+/** =========================
+ * ADMIN: create GLOBAL FREE-GIFT coupon (separate place)
+ * POST /api/v1/admin/coupons/freegift/global
+ * body: { code, daysValid, giftProductId, giftQty, threshold, note?, maxRedemptions?, perUserLimit?, startAt? }
+ * ========================= */
+export const adminCreateGlobalFreeGiftCoupon = catchAsyncErrors(async (req, res, next) => {
+  let { code, daysValid, giftProductId, giftQty, threshold, note, maxRedemptions, perUserLimit = 1, startAt } =
+    req.body || {};
+
+  if (!code || daysValid == null || !giftProductId || !giftQty || threshold == null) {
+    return next(new ErrorHandler("code, daysValid, giftProductId, giftQty, threshold are required", 400));
+  }
+  code = String(code).toUpperCase().trim();
+  daysValid = parseInt(daysValid, 10);
+  giftQty = parseInt(giftQty, 10);
+  threshold = Number(threshold);
+
+  if (!mongoose.isValidObjectId(giftProductId)) return next(new ErrorHandler("Invalid giftProductId", 400));
+  if (!Number.isInteger(daysValid) || daysValid <= 0) return next(new ErrorHandler("daysValid must be a positive integer", 400));
+  if (!Number.isInteger(giftQty) || giftQty <= 0) return next(new ErrorHandler("giftQty must be a positive integer", 400));
+  if (!(threshold >= 0)) return next(new ErrorHandler("threshold must be >= 0", 400));
+
+  const prod = await Product.findById(giftProductId).select("_id");
+  if (!prod) return next(new ErrorHandler("Gift product not found", 404));
+
+  const exists = await Coupon.findOne({ scope: "global", code }).lean();
+  if (exists) return next(new ErrorHandler("Global coupon with this code already exists", 409));
+
+  const expiresAt = new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000);
+
+  const coupon = await Coupon.create({
+    type: "free_gift",
+    scope: "global",
+    code,
+    expiresAt,
+    startAt: startAt ? new Date(startAt) : undefined,
+    maxRedemptions: maxRedemptions ? Number(maxRedemptions) : undefined,
+    perUserLimit: perUserLimit ? Number(perUserLimit) : 1,
+    giftProduct: prod._id,
+    giftQty,
+    threshold,
+    note,
+    createdBy: req.user?._id,
+  });
+
+  res.status(201).json({ success: true, coupon });
+});
+
+/** =========================
+ * USER: list my coupons (existing)
  * GET /api/v1/me/coupons?onlyValid=true&page=1&pageSize=20
  * ========================= */
 export const getMyCoupons = catchAsyncErrors(async (req, res) => {
@@ -83,7 +238,7 @@ export const getMyCoupons = catchAsyncErrors(async (req, res) => {
 });
 
 /** =========================
- * USER: get single coupon
+ * USER: get single coupon (existing)
  * GET /api/v1/me/coupons/:couponId
  * ========================= */
 export const getMyCouponById = catchAsyncErrors(async (req, res, next) => {
@@ -96,9 +251,8 @@ export const getMyCouponById = catchAsyncErrors(async (req, res, next) => {
   res.json({ success: true, coupon });
 });
 
-
 /** =========================
- * ADMIN: delete any coupon by id (hard delete)
+ * ADMIN: delete any coupon by id (existing)
  * DELETE /api/v1/admin/coupons/:couponId
  * ========================= */
 export const adminDeleteCoupon = catchAsyncErrors(async (req, res, next) => {
@@ -108,7 +262,7 @@ export const adminDeleteCoupon = catchAsyncErrors(async (req, res, next) => {
 });
 
 /** =========================
- * Helper: find usable coupon by id (user-scoped)
+ * Helper: find usable coupon by id (user-scoped) (existing)
  * ========================= */
 export const findValidCouponForUserById = async (userId, couponId) => {
   if (!couponId) return null;
@@ -121,7 +275,7 @@ export const findValidCouponForUserById = async (userId, couponId) => {
 };
 
 /** =========================
- * Helper: mark a user coupon used (after successful payment)
+ * Helper: mark a user coupon used (existing)
  * ========================= */
 export const markCouponUsed = async (couponId) => {
   if (!couponId) return;
@@ -129,8 +283,8 @@ export const markCouponUsed = async (couponId) => {
 };
 
 /** =========================
- * Helper: find a usable coupon by code for a given user
- * Tries user-scoped first, then global (enforcing per-user & total caps)
+ * Helper: find a usable coupon by code for a given user (existing)
+ * Supports both percentage and free_gift (type checked later at checkout)
  * ========================= */
 export const findValidCouponForUser = async (userId, rawCode) => {
   const code = String(rawCode || "").toUpperCase().trim();
@@ -171,9 +325,7 @@ export const findValidCouponForUser = async (userId, rawCode) => {
 };
 
 /** =========================
- * Helper: after successful payment, finalize redemption
- * - user coupon -> mark used
- * - global coupon -> record redemption row
+ * Helper: after successful payment, finalize redemption (existing)
  * ========================= */
 export const finalizeCouponRedemption = async ({ coupon, userId, orderId }) => {
   if (!coupon) return;
@@ -186,7 +338,7 @@ export const finalizeCouponRedemption = async ({ coupon, userId, orderId }) => {
 };
 
 /** =========================
- * ADMIN: list coupons (filterable)
+ * ADMIN: list coupons (existing)
  * GET /api/v1/admin/coupons?scope=global|user&assignedTo=<userId>&code=ABC&page=1&pageSize=20
  * ========================= */
 export const adminListCoupons = catchAsyncErrors(async (req, res) => {
@@ -208,54 +360,7 @@ export const adminListCoupons = catchAsyncErrors(async (req, res) => {
 });
 
 /** =========================
- * ADMIN: create global coupon
- * POST /api/v1/admin/coupons/global
- * body: { code, percentage, daysValid, note?, maxRedemptions?, perUserLimit?, startAt?, maxDeduction? }
- * ========================= */
-export const adminCreateGlobalCoupon = catchAsyncErrors(async (req, res, next) => {
-  let { code, percentage, daysValid, note, maxRedemptions, perUserLimit = 1, startAt, maxDeduction } = req.body;
-
-  if (!code || percentage == null || daysValid == null) {
-    return next(new ErrorHandler("code, percentage, daysValid are required", 400));
-  }
-  if (maxDeduction != null && !(Number(maxDeduction) >= 0)) {
-    return next(new ErrorHandler("maxDeduction must be >= 0", 400));
-  }
-
-  code = String(code).toUpperCase().trim();
-  percentage = Number(percentage);
-  daysValid = parseInt(daysValid, 10);
-
-  if (!(percentage >= 1 && percentage <= 100)) {
-    return next(new ErrorHandler("percentage 1–100", 400));
-  }
-  if (!Number.isInteger(daysValid) || daysValid <= 0) {
-    return next(new ErrorHandler("daysValid must be a positive int", 400));
-  }
-
-  const exists = await Coupon.findOne({ scope: "global", code }).lean();
-  if (exists) return next(new ErrorHandler("Global coupon with this code already exists", 409));
-
-  const expiresAt = new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000);
-
-  const coupon = await Coupon.create({
-    scope: "global",
-    code,
-    percentage,
-    expiresAt,
-    startAt: startAt ? new Date(startAt) : undefined,
-    maxRedemptions: maxRedemptions ? Number(maxRedemptions) : undefined,
-    perUserLimit: perUserLimit ? Number(perUserLimit) : 1,
-    maxDeduction: maxDeduction != null ? Number(maxDeduction) : undefined,
-    note,
-    createdBy: req.user?._id,
-  });
-
-  res.status(201).json({ success: true, coupon });
-});
-
-/** =========================
- * USER: claim a code -> create a personal coupon copied from a valid GLOBAL one
+ * USER: claim a code from GLOBAL to personal (existing)
  * POST /api/v1/me/coupons/claim { code }
  * ========================= */
 export const claimMyCoupon = catchAsyncErrors(async (req, res, next) => {
@@ -266,7 +371,6 @@ export const claimMyCoupon = catchAsyncErrors(async (req, res, next) => {
   const userId = req.user._id;
   const now = new Date();
 
-  // If user already has an active personal coupon with this code, return it
   const existing = await Coupon.findOne({
     scope: "user",
     assignedTo: userId,
@@ -278,14 +382,12 @@ export const claimMyCoupon = catchAsyncErrors(async (req, res, next) => {
     return res.status(200).json({ success: true, coupon: existing, alreadyHad: true });
   }
 
-  // Must be a valid GLOBAL coupon (not expired, within startAt, caps ok)
   const found = await findValidCouponForUser(userId, code);
   if (!found || found.coupon.scope !== "global") {
     return next(new ErrorHandler("Invalid or expired code", 400));
   }
   const global = found.coupon;
 
-  // Optional: block claim if user already redeemed this global coupon in the past
   const [total, userCount] = await Promise.all([
     global.maxRedemptions ? CouponRedemption.countDocuments({ couponId: global._id }) : Promise.resolve(0),
     CouponRedemption.countDocuments({ couponId: global._id, userId }),
@@ -297,18 +399,27 @@ export const claimMyCoupon = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("This promotion has ended", 409));
   }
 
-  // Create a personal copy (inherits percentage, expiresAt, and maxDeduction)
+  // Personal copy: copy all relevant fields (type + payload)
+  const base = {
+    scope: "user",
+    code,
+    assignedTo: userId,
+    expiresAt: new Date(global.expiresAt),
+    note: `claimed from global ${global._id}`,
+    createdBy: req.user?._id,
+  };
+
+  const payload =
+    global.type === "free_gift"
+      ? { type: "free_gift", giftProduct: global.giftProduct, giftQty: global.giftQty, threshold: global.threshold }
+      : {
+          type: "percentage",
+          percentage: global.percentage,
+          maxDeduction: global.maxDeduction,
+        };
+
   try {
-    const coupon = await Coupon.create({
-      scope: "user",
-      code,
-      percentage: global.percentage,
-      maxDeduction: global.maxDeduction,
-      assignedTo: userId,
-      expiresAt: new Date(global.expiresAt),
-      note: `claimed from global ${global._id}`,
-      createdBy: req.user?._id,
-    });
+    const coupon = await Coupon.create({ ...base, ...payload });
     return res.status(201).json({ success: true, coupon });
   } catch (e) {
     if (e?.code === 11000) {
@@ -320,7 +431,7 @@ export const claimMyCoupon = catchAsyncErrors(async (req, res, next) => {
 });
 
 /** =========================
- * USER: validate a code without claiming (optional helper for UI)
+ * USER: validate a code (existing)
  * GET /api/v1/me/coupons/validate?code=FALL15
  * ========================= */
 export const validateMyCouponCode = catchAsyncErrors(async (req, res) => {
@@ -336,10 +447,14 @@ export const validateMyCouponCode = catchAsyncErrors(async (req, res) => {
     coupon: {
       _id: coupon._id,
       code: coupon.code,
-      percentage: coupon.percentage,
+      type: coupon.type,
       scope: coupon.scope,
       expiresAt: coupon.expiresAt,
-      maxDeduction: coupon.maxDeduction ?? undefined,
+      percentage: coupon.type === "percentage" ? coupon.percentage : undefined,
+      maxDeduction: coupon.type === "percentage" ? coupon.maxDeduction ?? undefined : undefined,
+      giftProduct: coupon.type === "free_gift" ? coupon.giftProduct : undefined,
+      giftQty: coupon.type === "free_gift" ? coupon.giftQty : undefined,
+      threshold: coupon.type === "free_gift" ? coupon.threshold : undefined,
     },
   });
 });

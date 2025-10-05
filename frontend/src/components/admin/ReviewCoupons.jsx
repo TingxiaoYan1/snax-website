@@ -2,17 +2,41 @@ import React, { useEffect, useState } from "react";
 import AdminLayout from "../layout/AdminLayout";
 import MetaData from "../layout/MetaData";
 import toast from "react-hot-toast";
-import { useGetAdminCouponsQuery, useLazyGetAdminCouponsQuery, useAdminDeleteCouponMutation } from "../../redux/api/couponsApi";
+import {
+  useGetAdminCouponsQuery,
+  useLazyGetAdminCouponsQuery,
+  useAdminDeleteCouponMutation,
+} from "../../redux/api/couponsApi";
+
+// Renders a line describing coupon payload
+const PayloadCell = ({ c }) => {
+  if (c.type === "free_gift") {
+    return (
+      <span className="badge bg-info text-dark">
+        FREE-GIFT · threshold ${Number(c.threshold || 0).toFixed(2)} · product {c.giftProduct} ×{c.giftQty}
+      </span>
+    );
+  }
+  // default to percentage coupon display
+  return (
+    <>
+      <strong>{c.percentage}%</strong>
+      {c.maxDeduction != null && (
+        <span className="ms-1 text-muted">(cap ${Number(c.maxDeduction).toFixed(2)})</span>
+      )}
+    </>
+  );
+};
 
 const Row = ({ c, onDelete }) => (
   <tr>
     <td>{c.code}</td>
-    <td>{c.percentage}%</td>
+    <td>{c.type || "percentage"}</td>
+    <td><PayloadCell c={c} /></td>
     <td>{c.scope}</td>
     <td>{c.assignedTo || "-"}</td>
     <td>{c.startAt ? new Date(c.startAt).toLocaleString() : "-"}</td>
     <td>{new Date(c.expiresAt).toLocaleString()}</td>
-    <td>{c.maxDeduction != null ? `$${Number(c.maxDeduction).toFixed(2)}` : "-"}</td>
     <td className="text-end">
       <button className="btn btn-sm btn-danger" onClick={() => onDelete(c._id)}>Delete</button>
     </td>
@@ -65,8 +89,8 @@ export default function ReviewCoupons() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Code</th><th>Off</th><th>Scope</th><th>User</th>
-                      <th>Starts</th><th>Expires</th><th>Max $</th><th></th>
+                      <th>Code</th><th>Type</th><th>Payload</th><th>Scope</th>
+                      <th>User</th><th>Starts</th><th>Expires</th><th></th>
                     </tr>
                   </thead>
                   <tbody>{globalData?.coupons?.map((c) => <Row key={c._id} c={c} onDelete={onDelete} />)}</tbody>
@@ -90,8 +114,8 @@ export default function ReviewCoupons() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Code</th><th>Off</th><th>Scope</th><th>User</th>
-                      <th>Starts</th><th>Expires</th><th>Max $</th><th></th>
+                      <th>Code</th><th>Type</th><th>Payload</th><th>Scope</th>
+                      <th>User</th><th>Starts</th><th>Expires</th><th></th>
                     </tr>
                   </thead>
                   <tbody>{userData?.coupons?.map((c) => <Row key={c._id} c={c} onDelete={onDelete} />)}</tbody>

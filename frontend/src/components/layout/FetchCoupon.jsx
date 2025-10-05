@@ -6,9 +6,34 @@ import { useClaimMyCouponMutation } from "../../redux/api/couponsApi";
 
 const msgFromErr = (e) => e?.data?.message || e?.error || e?.message || "Unable to claim this code";
 
+function PayloadSummary({ coupon }) {
+  if (!coupon) return null;
+
+  if (coupon.type === "free_gift") {
+    return (
+      <>
+        <div><strong>Type:</strong> Free Gift</div>
+        <div><strong>Spend Threshold:</strong> ${Number(coupon.threshold || 0).toFixed(2)}</div>
+        <div><strong>Gift:</strong> product <code>{coupon.giftProduct}</code> ×{coupon.giftQty}</div>
+      </>
+    );
+  }
+
+  // fallback: percentage coupon
+  return (
+    <>
+      <div><strong>Type:</strong> Percentage</div>
+      <div>
+        <strong>Discount:</strong> {coupon.percentage}%{" "}
+        {coupon.maxDeduction != null ? `(max $${Number(coupon.maxDeduction).toFixed(2)})` : ""}
+      </div>
+    </>
+  );
+}
+
 export default function FetchCoupon() {
   const [code, setCode] = useState("");
-  const [lastResult, setLastResult] = useState(null); // remember what just happened
+  const [lastResult, setLastResult] = useState(null);
   const [claim, { isLoading }] = useClaimMyCouponMutation();
 
   const onSubmit = async (e) => {
@@ -18,7 +43,6 @@ export default function FetchCoupon() {
       toast.error("Enter a code");
       return;
     }
-
     setLastResult(null);
     try {
       // IMPORTANT: pass a string; couponsApi wraps it as { code }
@@ -31,10 +55,8 @@ export default function FetchCoupon() {
       } else {
         toast.success("Coupon added to your account");
       }
-
       setCode("");
     } catch (err) {
-      // 409 means they've already USED it before (cannot claim)
       if (err?.status === 409) {
         setLastResult({ type: "used", message: msgFromErr(err) });
         toast.error(err?.data?.message || "You have already used this code");
@@ -63,7 +85,7 @@ export default function FetchCoupon() {
                   className="form-control"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. FALL15"
+                  placeholder="e.g. GIFT50"
                   autoComplete="off"
                   disabled={isLoading}
                 />
@@ -78,7 +100,7 @@ export default function FetchCoupon() {
               <div className="alert alert-success mt-3">
                 <div className="fw-bold">Coupon added</div>
                 <div><strong>Code:</strong> {C.code}</div>
-                <div><strong>Discount:</strong> {C.percentage}% {C.maxDeduction != null ? `(max $${Number(C.maxDeduction).toFixed(2)})` : ""}</div>
+                <PayloadSummary coupon={C} />
                 <div><strong>Expires:</strong> {new Date(C.expiresAt).toLocaleString()}</div>
                 <div className="mt-2">
                   <a className="btn btn-sm btn-outline-secondary" href="/me/coupons">View My Coupons</a>
@@ -90,7 +112,7 @@ export default function FetchCoupon() {
               <div className="alert alert-info mt-3">
                 <div className="fw-bold">You already claimed this code</div>
                 <div><strong>Code:</strong> {C.code}</div>
-                <div><strong>Discount:</strong> {C.percentage}% {C.maxDeduction != null ? `(max $${Number(C.maxDeduction).toFixed(2)})` : ""}</div>
+                <PayloadSummary coupon={C} />
                 <div><strong>Expires:</strong> {new Date(C.expiresAt).toLocaleString()}</div>
                 <div className="mt-2">
                   <a className="btn btn-sm btn-outline-secondary" href="/me/coupons">View My Coupons</a>

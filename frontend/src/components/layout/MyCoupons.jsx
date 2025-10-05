@@ -5,6 +5,21 @@ import { useGetMyCouponsQuery } from "../../redux/api/couponsApi";
 
 const money = (n) => Number(n ?? 0).toFixed(2);
 
+function Payload({ c }) {
+  if (c.type === "free_gift") {
+    return (
+      <span className="badge bg-info text-dark">
+        FREE-GIFT · ≥ ${money(c.threshold)} · product {c.giftProduct} ×{c.giftQty}
+      </span>
+    );
+  }
+  return (
+    <>
+      {c.percentage}% {c.maxDeduction != null ? <span className="text-muted">(cap ${money(c.maxDeduction)})</span> : null}
+    </>
+  );
+}
+
 export default function MyCoupons() {
   const { data, isFetching, isError, error } = useGetMyCouponsQuery({ onlyValid: false, page: 1, pageSize: 100 });
   const coupons = data?.coupons || [];
@@ -29,8 +44,8 @@ export default function MyCoupons() {
                 <thead>
                   <tr>
                     <th>Code</th>
-                    <th>Discount</th>
-                    <th>Max Deduct</th>
+                    <th>Type</th>
+                    <th>Payload</th>
                     <th>Scope</th>
                     <th>Expires</th>
                     <th>Status</th>
@@ -43,8 +58,8 @@ export default function MyCoupons() {
                     return (
                       <tr key={c._id}>
                         <td>{c.code}</td>
-                        <td>{c.percentage}%</td>
-                        <td>{c.maxDeduction != null ? `$${money(c.maxDeduction)}` : "—"}</td>
+                        <td>{c.type || "percentage"}</td>
+                        <td><Payload c={c} /></td>
                         <td>{c.scope || "user"}</td>
                         <td>{new Date(c.expiresAt).toLocaleString()}</td>
                         <td>

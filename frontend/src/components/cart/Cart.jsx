@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import MetaData from "../layout/MetaData";
 import Loader from "../layout/Loader";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,11 +8,46 @@ import {
   useRemoveCartItemMutation,
   useClearCartMutation,
 } from "../../redux/api/cartApi";
+import { useLazyGetRandomProductsQuery } from "../../redux/api/productsApi";
 import toast from "react-hot-toast";
-import { calculateOrderCost } from '../../helpers/helpers';
+import { calculateOrderCost } from "../../helpers/helpers";
 
+// Utility: format as money
 const money = (n) => Number(n || 0).toFixed(2);
 
+/* ----------------------------- Suggested card ----------------------------- */
+// Small card used in the "What you may want" section
+function SuggestionCard({ p, onAdd, busy }) {
+  return (
+    <div className="col-6 col-md-3 mb-3">
+      <div className="card h-100">
+        <img
+          src={p?.images?.[0]?.url || "/images/default_product.png"}
+          className="card-img-top"
+          alt={p?.name}
+          style={{ objectFit: "cover", height: 140 }}
+        />
+        <div className="card-body d-flex flex-column">
+          <Link to={`/product/${p._id}`} className="fw-semibold mb-1">
+            {p?.name}
+          </Link>
+          <div className="text-muted mb-2">${money(p?.price)}</div>
+          <button
+            className="btn btn-sm btn-primary mt-auto"
+            onClick={() => onAdd(p)}
+            disabled={busy}
+            title="Add to cart"
+          >
+            <i className="fa fa-cart-plus me-1" />
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------- Cart ---------------------------------- */
 const Cart = () => {
   const navigate = useNavigate();
 
@@ -24,13 +59,12 @@ const Cart = () => {
 
   const cartItems = data?.items || [];
 
-  // ---- quantities & estimates for display only (server is authoritative) ----
+  // Client-calculated estimates (server is the source of truth at checkout)
   const units = cartItems.reduce((s, i) => s + (i.quantity || 0), 0);
-  const {itemsPrice,
-        shippingPrice, 
-        taxPrice, 
-        totalPrice} = calculateOrderCost(cartItems);
+  const { itemsPrice, shippingPrice, taxPrice, totalPrice } =
+    calculateOrderCost(cartItems);
 
+  // Update a cart line to a new quantity (keeps variant if present)
   const setItemToCart = async (item, newQty) => {
     try {
       await upsertCartItem({
@@ -43,6 +77,7 @@ const Cart = () => {
     }
   };
 
+  // Quantity controls
   const increaseQty = (item, quantity) => {
     const newQty = (quantity || 0) + 1;
     if (newQty > (item?.stock ?? 0)) return;
@@ -55,6 +90,7 @@ const Cart = () => {
     setItemToCart(item, newQty);
   };
 
+  // Remove one line
   const removeCartItemHandler = async (id, variant) => {
     try {
       await removeCartItem({ productId: id, variant }).unwrap();
@@ -63,7 +99,7 @@ const Cart = () => {
     }
   };
 
-  const checkoutHandler = () => navigate("/shipping");
+  const checkoutHandler = () => navigate("/checkout");
 
   const clearHandler = async () => {
     try {
@@ -73,7 +109,80 @@ const Cart = () => {
     }
   };
 
+  /* ------------- DB-RANDOM suggestions (manual fetch, no auto-refresh) ------------- */
+
+  // Build a clean list of string ObjectIds to exclude (items already in cart)
+  const currentExcludeIds = useMemo(
+    () =>
+      (cartItems || [])
+        .map((ci) => (ci?.product != null ? String(ci.product) : ""))
+        .filter((id) => id && id.length >= 12), // loose client guard; server will re-validate
+    [cartItems]
+  );
+
+  // Use LAZY query so we fetch only when we choose
+  const [
+    triggerRandom, // call this to fetch suggestions
+    { isFetching: randomLoading, isError: randomError, error: randomErrObj },
+  ] = useLazyGetRandomProductsQuery();
+
+  // Local suggestions state — we control what’s displayed
+  const [suggestions, setSuggestions] = useState([]);
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+
+  // Fetch once after cart loads; DO NOT depend on cart changing → no auto refresh
+  useEffect(() => {
+    if (!isLoading && !hasFetchedOnce) {
+      (async () => {
+        try {
+          const data = await triggerRandom({
+            limit: 4,
+            exclude: currentExcludeIds,
+            inStockOnly: false,
+            seed: Date.now(),
+          }).unwrap();
+          setSuggestions(data?.products || []);
+        } catch (err) {
+          // surfacing error is handled by randomError/randomErrObj
+        } finally {
+          setHasFetchedOnce(true);
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, hasFetchedOnce]); // intentionally NOT depending on cartItems
+
+  // Manual refresh — only when user clicks
+  const refreshSuggestions = async () => {
+    try {
+      const data = await triggerRandom({
+        limit: 4,
+        exclude: currentExcludeIds,
+        inStockOnly: false,
+        seed: Date.now(),
+      }).unwrap();
+      setSuggestions(data?.products || []);
+    } catch (err) {
+      // error UI handled below
+    }
+  };
+
+  // Add suggested item to cart and remove it from the suggestions list immediately
+  const addSuggested = async (p) => {
+    try {
+      await upsertCartItem({ productId: p._id, quantity: 1 }).unwrap();
+      toast.success("Added to cart");
+      // Remove this item from suggestions (no auto re-fetch)
+      setSuggestions((prev) => prev.filter((x) => String(x._id) !== String(p._id)));
+    } catch (e) {
+      toast.error(e?.data?.message || "Failed to add");
+    }
+  };
+
+  /* ---------------------------------------------------------------------- */
+
   if (isLoading) return <Loader />;
+
   if (isError) {
     return (
       <>
@@ -105,9 +214,13 @@ const Cart = () => {
           </h2>
 
           <div className="row d-flex justify-content-between">
+            {/* --------------------------- Cart lines --------------------------- */}
             <div className="col-12 col-lg-8">
               {cartItems.map((item) => (
-                <div className="cart-item" key={`${item.product}-${item.variant || "default"}`}>
+                <div
+                  className="cart-item"
+                  key={`${item.product}-${item.variant || "default"}`}
+                >
                   <hr />
                   <div className="row">
                     <div className="col-4 col-lg-3">
@@ -157,22 +270,80 @@ const Cart = () => {
                       <i
                         id="delete_cart_item"
                         className="fa fa-trash btn btn-danger"
-                        onClick={() => removeCartItemHandler(item?.product, item?.variant)}
+                        onClick={() =>
+                          removeCartItemHandler(item?.product, item?.variant)
+                        }
                       />
                     </div>
                   </div>
                   <hr />
                 </div>
               ))}
+
+              {/* ----------------------- What you may want ---------------------- */}
+              <div className="mt-4">
+                <div className="d-flex align-items-center justify-content-between">
+                  <h4 className="m-0">What you may want</h4>
+
+                  {/* Single Refresh button only */}
+                  <button
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={refreshSuggestions}
+                    disabled={randomLoading}
+                    title="Refresh suggestions"
+                  >
+                    <i className="fa fa-random me-1" />
+                    Refresh
+                  </button>
+                </div>
+
+                <div className="row mt-3">
+                  {randomLoading ? (
+                    <div className="col-12">
+                      <div className="alert alert-info">Loading suggestions…</div>
+                    </div>
+                  ) : randomError ? (
+                    <div className="col-12">
+                      <div className="alert alert-danger">
+                        Failed to fetch suggestions.
+                        <div className="small text-muted mt-1">
+                          {String(
+                            randomErrObj?.data?.message ||
+                              randomErrObj?.error ||
+                              randomErrObj?.status ||
+                              "Unknown error"
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : suggestions.length === 0 ? (
+                    <div className="col-12">
+                      <div className="alert alert-secondary">
+                        No suggestions right now.{" "}
+                        <Link to="/">Browse products</Link>.
+                      </div>
+                    </div>
+                  ) : (
+                    suggestions.map((p) => (
+                      <SuggestionCard
+                        key={p._id}
+                        p={p}
+                        onAdd={addSuggested}
+                        busy={isUpdating}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
 
+            {/* --------------------------- Summary card --------------------------- */}
             <div className="col-12 col-lg-3 my-4">
               <div id="order_summary">
                 <h4>Order Summary</h4>
                 <hr />
                 <p>
-                  Units:{" "}
-                  <span className="order-summary-values">{units} (Units)</span>
+                  Units: <span className="order-summary-values">{units} (Units)</span>
                 </p>
                 <p>
                   Subtotal:{" "}

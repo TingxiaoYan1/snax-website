@@ -90,7 +90,8 @@ D:\CMU\intern for Mr.He\Snax website
 |     |  |  ├── Login.jsx
 |     |  |  ├── ProtectedRoute.jsx
 |     |  |  ├── Register.jsx
-|     |  |  └── ResetPassword.jsx
+|     |  |  ├── ResetPassword.jsx
+|     |  |  └── VerifyEmailCode.jsx
 |     |  ├── cart
 |     |  |  ├── Cart.jsx
 |     |  |  ├── CheckoutSteps.jsx
@@ -161,6 +162,6 @@ D:\CMU\intern for Mr.He\Snax website
 ├── README.md
 └── repo-structure.txt
 
-directory: 4402 file: 31224
+directory: 4402 file: 31225
 
 ignored: directory (464)

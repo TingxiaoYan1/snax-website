@@ -60,7 +60,7 @@ export const orderApi = createApi({
           body,
         };
       },
-      invalidatesTags: ["Order"],
+      invalidatesTags: ["Order","AdminOrders"],
     }),
     deleteOrder: builder.mutation({
       query(id) {

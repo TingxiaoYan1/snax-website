@@ -4,13 +4,53 @@ const { Schema, model, models } = mongoose;
 const CouponSchema = new Schema(
   {
     code: { type: String, required: true, uppercase: true, trim: true, index: true },
-    percentage: { type: Number, required: true, min: 1, max: 100 },
-    maxDeduction: { type: Number, min: 0 }, // optional; no cap if undefined
 
-    // NEW: either tied to a single user ("user") or usable by everyone ("global")
+    // NEW: coupon kind
+    type: {
+      type: String,
+      enum: ["percentage", "free_gift"],
+      default: "percentage",
+      index: true,
+    },
+
+    /* ----- percentage type fields ----- */
+    percentage: {
+      type: Number,
+      min: 1,
+      max: 100,
+      required: function () {
+        return this.type === "percentage";
+      },
+    },
+    maxDeduction: { type: Number, min: 0 }, // optional cap for percentage type
+
+    /* ----- free_gift type fields ----- */
+    giftProduct: {
+      type: Schema.Types.ObjectId,
+      ref: "Product",
+      required: function () {
+        return this.type === "free_gift";
+      },
+      index: true,
+    },
+    giftQty: {
+      type: Number,
+      min: 1,
+      required: function () {
+        return this.type === "free_gift";
+      },
+    },
+    // Order subtotal (before tax/shipping/discounts) must be >= threshold to use
+    threshold: {
+      type: Number,
+      min: 0,
+      required: function () {
+        return this.type === "free_gift";
+      },
+    },
+
+    /* ----- scope and lifecycle ----- */
     scope: { type: String, enum: ["user", "global"], default: "user", index: true },
-
-    // For scope === "user"
     assignedTo: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -22,17 +62,13 @@ const CouponSchema = new Schema(
         message: "assignedTo is required when scope is 'user'",
       },
     },
-
-    // Validity window & status
-    startAt: { type: Date },                 // optional start time (for global campaigns)
+    startAt: { type: Date },
     expiresAt: { type: Date, required: true, index: true },
+    used: { type: Boolean, default: false, index: true }, // only relevant to user-scoped
 
-    // Only meaningful for user-scoped coupons
-    used: { type: Boolean, default: false, index: true },
-
-    // Limits for global coupons
-    maxRedemptions: { type: Number },        // total cap across everyone (optional)
-    perUserLimit: { type: Number, default: 1 }, // default: once per user
+    // global limits
+    maxRedemptions: { type: Number },
+    perUserLimit: { type: Number, default: 1 },
 
     note: String,
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
@@ -42,7 +78,7 @@ const CouponSchema = new Schema(
 
 // Fast lookups
 CouponSchema.index({ assignedTo: 1, used: 1, expiresAt: 1, createdAt: -1 });
-// One doc per (code,scope,assignedTo) — allows same code assigned to different users + one global
+// Uniqueness across code/scope/assignedTo (global has assignedTo=null)
 CouponSchema.index({ code: 1, scope: 1, assignedTo: 1 }, { unique: true });
 
 export default models.Coupon || model("Coupon", CouponSchema);

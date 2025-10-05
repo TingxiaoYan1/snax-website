@@ -12,9 +12,6 @@ import UpdatePassword from "../user/UpdatePassword";
 import ForgotPassword from "../auth/ForgotPassword";
 import ResetPassword from "../auth/ResetPassword";
 import Cart from "../cart/Cart";
-import Shipping from "../cart/Shipping";
-import ConfirmOrder from "../cart/ConfirmOrder";
-import PaymentMethod from "../cart/PaymentMethod";
 import MyOrders from "../order/MyOrders";
 import OrderDetails from "../order/OrderDetails";
 import Invoice from "../invoice/Invoice";
@@ -22,6 +19,7 @@ import SquareReturn from "../checkout/SquareReturn";
 import FetchCoupon from "../layout/FetchCoupon";
 import MyCoupons from "../layout/MyCoupons";
 import VerifyEmailCode from "../auth/VerifyEmailCode";
+import Checkout from "../cart/Checkout";
 
 const userRoutes = () => {
   return (
@@ -82,32 +80,15 @@ const userRoutes = () => {
       />
 
       <Route
-        path="/shipping"
+        path="/checkout"
         element={
           <ProtectedRoute>
-            <Shipping />
+            <Checkout />
           </ProtectedRoute>
         }
       />
 
-      <Route
-        path="/confirm_order"
-        element={
-          <ProtectedRoute>
-            <ConfirmOrder />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/payment_method"
-        element={
-          <ProtectedRoute>
-            <PaymentMethod />
-          </ProtectedRoute>
-        }
-      />
-
+      
       <Route
         path="/square/return"
         element={

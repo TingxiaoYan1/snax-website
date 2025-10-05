@@ -34,9 +34,14 @@ const AdminLayout = ({children}) => {
             icon: "fas fa-star",
         },
         {
-            name: "Coupons",
+            name: "Percentage Coupons",
             url: "/admin/coupons",
-            icon: "fas fa-money",
+            icon: "fas fa-list",
+        },
+        {
+            name: "Free Gift Coupons",
+            url: "/admin/coupons/freegift",
+            icon: "fas fa-gift",
         },
         {
             name: "Review Coupons",

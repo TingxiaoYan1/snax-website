@@ -2,7 +2,11 @@ import React from "react";
 import { Link } from "react-router-dom";
 import StarRatings from "react-star-ratings";
 
-const ProductItem = ({ product, columnSize }) => {
+const ProductItem = ({ product, columnSize, allowBlindbox = false }) => {
+  // Hide blindbox everywhere by default (main/search pages).
+  if (!allowBlindbox && product?.categories?.l1 === "blindbox") {
+    return null;
+  }
   return (
     <div className= {`col-sm-12 col-md-6 col-lg-${columnSize} my-3`} >
         <div className="card p-3 rounded">

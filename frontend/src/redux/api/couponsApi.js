@@ -52,6 +52,26 @@ export const couponsApi = createApi({
           ? [...res.coupons.map((c) => ({ type: "Coupons", id: c._id })), { type: "Coupons", id: "MY_LIST" }]
           : [{ type: "Coupons", id: "MY_LIST" }],
     }),
+
+    // --- NEW: create user-scoped FREE-GIFT coupon ---
+    createUserFreeGiftCoupon: builder.mutation({
+      query: (body) => ({
+        url: "/admin/coupons/freegift/user",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminCoupons"], // if you use tags
+    }),
+
+    // --- NEW: create global FREE-GIFT coupon ---
+    createGlobalFreeGiftCoupon: builder.mutation({
+      query: (body) => ({
+        url: "/admin/coupons/freegift/global",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminCoupons"],
+    }),
   }),
 });
 
@@ -67,4 +87,6 @@ export const {
   useValidateMyCodeQuery,
   useLazyValidateMyCodeQuery,
   useGetMyCouponsQuery,
+  useCreateUserFreeGiftCouponMutation,
+  useCreateGlobalFreeGiftCouponMutation,
 } = couponsApi;
