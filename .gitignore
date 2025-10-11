@@ -2,7 +2,6 @@
 node_modules/
 
 # build/coverage (anywhere)
-build/
 dist/
 coverage/
 
