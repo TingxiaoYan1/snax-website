@@ -28,6 +28,17 @@ export const productApi = createApi({
                 return { url: "/products", params: qp };
             },
         }),
+        getExploreProducts: builder.query({
+            query: ({ l1, l2, limit, cursor, sort }) => {
+                const p = new URLSearchParams();
+                if (l1 && l1 !== "all") p.set("l1", String(l1));
+                if (l2) p.set("l2", String(l2));
+                if (limit) p.set("limit", String(limit));
+                if (cursor) p.set("cursor", String(cursor)); // opaque; just pass it back
+                if (sort) p.set("sort", String(sort));       // "newest" | "price-asc" | "price-desc"
+                return { url: `/products/explore?${p.toString()}` };
+            },
+        }),
         // inside createApi({ endpoints: (builder) => ({ ... }) })
         getRandomProducts: builder.query({
             query: ({ limit = 4, exclude = [], inStockOnly = false, seed } = {}) => {
@@ -149,7 +160,8 @@ export const productApi = createApi({
 });
 
 export const { 
-    useGetProductsQuery, 
+    useGetProductsQuery,
+    useLazyGetProductsQuery,
     useGetProductDetailsQuery, 
     useSubmitReviewMutation, 
     useCanUserReviewQuery,
@@ -165,4 +177,6 @@ export const {
     useGetInitializedTagsQuery,
     useGetRandomProductsQuery,
     useLazyGetRandomProductsQuery,
+    useGetExploreProductsQuery,
+    useLazyGetExploreProductsQuery,
 } = productApi;

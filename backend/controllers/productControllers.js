@@ -57,14 +57,12 @@ function normalizeTags(input) {
   return out;
 }
 
-/* =========================================================================
- * Public: list products (keyword + price/ratings + L1/L2), blindbox hidden
- * ========================================================================= */
-/** GET /api/v1/products?l1=&l2=&keyword=&price[gte]=&price[lte]=&ratings[gte]= */
+//Public: list products (keyword + price/ratings + L1/L2), blindbox hidden
+// GET /api/v1/products?l1=&l2=&keyword=&price[gte]=&price[lte]=&ratings[gte]
 export const getProducts = catchAsyncErrors(async (req, res, next) => {
-  const resPerPage = 4;
+  const resPerPage = 8;
 
-  // ✅ Start APIFilters with a Query (Product.find()), never a Model
+  // Start APIFilters with a Query (Product.find()), never a Model
   const apiFilters = new APIFilters(Product.find(), req.query).search().filters();
 
   const match = buildMatchFromQuery(req.query);
@@ -82,6 +80,80 @@ export const getProducts = catchAsyncErrors(async (req, res, next) => {
     filteredProductsCount,
     products,
   });
+});
+
+
+
+function encodeCursor(obj) {
+  return Buffer.from(JSON.stringify(obj), "utf8").toString("base64url");
+}
+function decodeCursor(s) {
+  try { return JSON.parse(Buffer.from(String(s||""), "base64url").toString("utf8")); }
+  catch { return null; }
+}
+export const getExploreProducts = catchAsyncErrors(async (req, res) => {
+  const limitRaw = parseInt(req.query.limit || "12", 10);
+  const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 12, 1), 48);
+
+  // same L1/L2 + blindbox behavior as elsewhere
+  const match = buildMatchFromQuery(req.query);
+
+  // ---- sort selection: newest (default) | price-asc | price-desc
+  const sortKey = String(req.query.sort || "newest").toLowerCase();
+  let sort = { _id: -1 };
+  let cursorCond = {};
+
+  const cursorRaw = String(req.query.cursor || "").trim();
+
+  if (sortKey === "price-asc") {
+    sort = { price: 1, _id: -1 }; // tiebreak by _id for stability
+    const cur = decodeCursor(cursorRaw);
+    if (cur?.id && cur?.price !== undefined && mongoose.isValidObjectId(cur.id)) {
+      cursorCond = {
+        $or: [
+          { price: { $gt: cur.price } },
+          { price: cur.price, _id: { $lt: new mongoose.Types.ObjectId(cur.id) } },
+        ],
+      };
+    }
+  } else if (sortKey === "price-desc") {
+    sort = { price: -1, _id: -1 };
+    const cur = decodeCursor(cursorRaw);
+    if (cur?.id && cur?.price !== undefined && mongoose.isValidObjectId(cur.id)) {
+      cursorCond = {
+        $or: [
+          { price: { $lt: cur.price } },
+          { price: cur.price, _id: { $lt: new mongoose.Types.ObjectId(cur.id) } },
+        ],
+      };
+    }
+  } else {
+    // newest (default): simple _id cursor
+    if (cursorRaw && mongoose.isValidObjectId(cursorRaw)) {
+      cursorCond = { _id: { $lt: new mongoose.Types.ObjectId(cursorRaw) } };
+    }
+  }
+
+  const filter = Object.keys(cursorCond).length ? { $and: [match, cursorCond] } : match;
+
+  // fetch one extra to know hasMore
+  const docs = await Product.find(filter).sort(sort).limit(limit + 1).lean();
+
+  const hasMore = docs.length > limit;
+  const items = hasMore ? docs.slice(0, limit) : docs;
+
+  // nextCursor depends on sort type
+  let nextCursor = null;
+  if (items.length) {
+    const last = items[items.length - 1];
+    if (sortKey === "price-asc" || sortKey === "price-desc") {
+      nextCursor = encodeCursor({ price: last.price ?? 0, id: String(last._id) });
+    } else {
+      nextCursor = String(last._id);
+    }
+  }
+
+  return res.status(200).json({ items, nextCursor, hasMore });
 });
 
 export const getRandomProducts = catchAsyncErrors(async (req, res) => {

@@ -103,7 +103,7 @@ export const newOrder = catchAsyncErrors(async (req, res, next) => {
   const order = await Order.create({
     user: req.user._id,
     orderItems, // keep original item prices; discount is captured separately in amounts + couponSnapshot
-    shippingInfo,
+    shippingInfo, // <-- uses the NEW shipping fields sent by frontend
     itemsPrice,        // DISCOUNTED items subtotal
     taxAmount,         // tax computed on discounted items
     shippingAmount,    // computed from discounted items subtotal (same behavior in Square)
@@ -113,7 +113,7 @@ export const newOrder = catchAsyncErrors(async (req, res, next) => {
     paymentInfo,
     appliedCouponId,
     couponSnapshot,
-    orderStatus: "pending_payment",
+    orderStatus: "pending_payment", // NOTE: if your schema enum does not include this, adjust as needed
   });
 
   // 7) Clear server cart

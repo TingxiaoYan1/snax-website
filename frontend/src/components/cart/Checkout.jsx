@@ -1,4 +1,3 @@
-// src/components/cart/Checkout.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import MetaData from "../layout/MetaData";
 import { useDispatch, useSelector } from "react-redux";
@@ -39,14 +38,19 @@ export default function Checkout() {
   const { data: myCouponsData } = useGetMyCouponsQuery({ onlyValid: true });
   const myCoupons = myCouponsData?.coupons || [];
 
-  // ----- LOCAL STATE: shipping + payment -----
+  // ----- LOCAL STATE: shipping + payment (NEW fields) -----
   const countryList = Object.values(countries);
-  const [address, setAddress]   = useState(reduxShipping?.address || "");
-  const [city, setCity]         = useState(reduxShipping?.city || "");
-  const [zipCode, setZipCode]   = useState(reduxShipping?.zipCode || "");
-  const [phoneNo, setPhoneNo]   = useState(reduxShipping?.phoneNo || "");
-  const [country, setCountry]   = useState(reduxShipping?.country || "");
-  const [method, setMethod]     = useState(""); // "COD" | "Card"
+
+  const [country, setCountry]       = useState(reduxShipping?.country   || "");
+  const [firstName, setFirstName]   = useState(reduxShipping?.firstName || "");
+  const [lastName, setLastName]     = useState(reduxShipping?.lastName  || "");
+  const [address, setAddress]       = useState(reduxShipping?.address   || "");
+  const [apartment, setApartment]   = useState(reduxShipping?.apartment || "");
+  const [city, setCity]             = useState(reduxShipping?.city      || "");
+  const [stateProv, setStateProv]   = useState(reduxShipping?.state     || "");
+  const [zip, setZip]               = useState(reduxShipping?.zip       || "");
+  const [phone, setPhone]           = useState(reduxShipping?.phone     || "");
+  const [method, setMethod]         = useState(""); // "COD" | "Card"
 
   // ----- TOTALS (client-side estimate; server is source of truth) -----
   const { itemsPrice, discountAmount, shippingPrice, taxableBase, taxPrice, totalPrice } = useMemo(() => {
@@ -77,12 +81,16 @@ export default function Checkout() {
 
   // ----- HELPERS -----
   const shippingPayload = useMemo(() => ({
-    address: address.trim(),
-    city: city.trim(),
-    zipCode: String(zipCode || "").trim(),
-    phoneNo: String(phoneNo || "").trim(),
-    country: country.trim(),
-  }), [address, city, zipCode, phoneNo, country]);
+    country:   String(country || "").trim(),
+    firstName: String(firstName || "").trim(),
+    lastName:  String(lastName || "").trim(),
+    address:   String(address || "").trim(),
+    apartment: String(apartment || "").trim(),
+    city:      String(city || "").trim(),
+    state:     String(stateProv || "").trim(),
+    zip:       String(zip || "").trim(),
+    phone:     String(phone || "").trim(),
+  }), [country, firstName, lastName, address, apartment, city, stateProv, zip, phone]);
 
   const couponFields = useMemo(() => {
     if (!selectedCoupon) return {};
@@ -106,9 +114,16 @@ export default function Checkout() {
 
   const giftProduct = giftData?.product;
 
-  // Validate shipping before posting
+  // Validate shipping before posting (Apartment is optional)
   const shippingValid = Boolean(
-    shippingPayload.address && shippingPayload.city && shippingPayload.country && shippingPayload.zipCode && shippingPayload.phoneNo
+    shippingPayload.country &&
+    shippingPayload.firstName &&
+    shippingPayload.lastName &&
+    shippingPayload.address &&
+    shippingPayload.city &&
+    shippingPayload.state &&
+    shippingPayload.zip &&
+    shippingPayload.phone
   );
 
   useEffect(() => {
@@ -170,40 +185,138 @@ export default function Checkout() {
             <h2 className="mb-3">Shipping Info</h2>
 
             <div className="mb-3">
-              <label className="form-label" htmlFor="address_field">Address</label>
-              <input id="address_field" className="form-control" value={address} onChange={(e)=>setAddress(e.target.value)} required />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label" htmlFor="city_field">City</label>
-              <input id="city_field" className="form-control" value={city} onChange={(e)=>setCity(e.target.value)} required />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label" htmlFor="zip_field">Zip Code</label>
-              <input id="zip_field" type="text" className="form-control" value={zipCode} onChange={(e)=>setZipCode(e.target.value)} required />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label" htmlFor="phone_field">Phone</label>
-              <input id="phone_field" type="tel" className="form-control" value={phoneNo} onChange={(e)=>setPhoneNo(e.target.value)} required />
-            </div>
-
-            <div className="mb-4">
               <label className="form-label" htmlFor="country_field">Country</label>
-              <select id="country_field" className="form-select" value={country} onChange={(e)=>setCountry(e.target.value)} required>
+              <select
+                id="country_field"
+                className="form-select"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                required
+              >
                 <option value="">Select country…</option>
-                {countryList.map((c) => (<option key={c.name} value={c.name}>{c.name}</option>))}
+                {countryList.map((c) => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
               </select>
+            </div>
+
+            <div className="row">
+              <div className="mb-3 col-12 col-md-6">
+                <label className="form-label" htmlFor="first_field">First Name</label>
+                <input
+                  id="first_field"
+                  className="form-control"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="mb-3 col-12 col-md-6">
+                <label className="form-label" htmlFor="last_field">Last Name</label>
+                <input
+                  id="last_field"
+                  className="form-control"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label" htmlFor="address_field">Address</label>
+              <input
+                id="address_field"
+                className="form-control"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="123 Turing Way"
+                required
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label" htmlFor="apartment_field">Apartment (optional)</label>
+              <input
+                id="apartment_field"
+                className="form-control"
+                value={apartment}
+                onChange={(e) => setApartment(e.target.value)}
+                placeholder="Apt / Suite / Unit"
+              />
+            </div>
+
+            <div className="row">
+              <div className="mb-3 col-12 col-md-6">
+                <label className="form-label" htmlFor="city_field">City</label>
+                <input
+                  id="city_field"
+                  className="form-control"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="mb-3 col-12 col-md-6">
+                <label className="form-label" htmlFor="state_field">State / Province</label>
+                <input
+                  id="state_field"
+                  className="form-control"
+                  value={stateProv}
+                  onChange={(e) => setStateProv(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="row">
+              <div className="mb-3 col-12 col-md-6">
+                <label className="form-label" htmlFor="zip_field">ZIP / Postal Code</label>
+                <input
+                  id="zip_field"
+                  type="text"
+                  className="form-control"
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="mb-3 col-12 col-md-6">
+                <label className="form-label" htmlFor="phone_field">Phone</label>
+                <input
+                  id="phone_field"
+                  type="tel"
+                  className="form-control"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
             <h2 className="mb-3">Payment</h2>
             <div className="form-check mb-2">
-              <input className="form-check-input" type="radio" name="pay" id="pay_cod" value="COD" checked={method==="COD"} onChange={()=>setMethod("COD")} />
+              <input
+                className="form-check-input"
+                type="radio"
+                name="pay"
+                id="pay_cod"
+                value="COD"
+                checked={method === "COD"}
+                onChange={() => setMethod("COD")}
+              />
               <label className="form-check-label" htmlFor="pay_cod">Cash on Delivery (COD)</label>
             </div>
             <div className="form-check mb-3">
-              <input className="form-check-input" type="radio" name="pay" id="pay_card" value="Card" checked={method==="Card"} onChange={()=>setMethod("Card")} />
+              <input
+                className="form-check-input"
+                type="radio"
+                name="pay"
+                id="pay_card"
+                value="Card"
+                checked={method === "Card"}
+                onChange={() => setMethod("Card")}
+              />
               <label className="form-check-label" htmlFor="pay_card">Card (Square)</label>
             </div>
 
@@ -256,7 +369,7 @@ export default function Checkout() {
               </>
             )}
 
-            {/* ---------- NEW: Free Gift preview under cart ---------- */}
+            {/* ---------- Free Gift preview under cart ---------- */}
             {isFreeGift && giftProductId && (
               <div className="border rounded p-3 mb-3" style={{ background: "#fafafa" }}>
                 <div className="d-flex justify-content-between align-items-center mb-2">

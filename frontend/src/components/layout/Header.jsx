@@ -1,3 +1,4 @@
+// src/components/layout/Header.jsx
 import React, { useState } from "react";
 import Search from "./Search";
 import { useAddSearchKeywordMutation, useGetMeQuery } from "../../redux/api/userApi";
@@ -6,7 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLazyLogoutQuery } from "../../redux/api/authApi";
 import { selectLocale, toggleLocale } from "../../redux/features/langSlice";
 
-// ⬇️ NEW: import the server-cart query
+// Server-cart query to show cart count
 import { useGetCartQuery } from "../../redux/api/cartApi";
 
 const Header = () => {
@@ -15,13 +16,13 @@ const Header = () => {
   const dispatch = useDispatch();
 
   const [addSearchKeyword] = useAddSearchKeywordMutation();
-    
-  
+
+  // Submit search to home page with keyword param; empty search goes home
   const submitHandler = async (e) => {
     e.preventDefault();
     const term = keyword.trim();
     if (term) {
-      addSearchKeyword(term).catch(() => {}); // fire-and-forget; don't block navigation
+      addSearchKeyword(term).catch(() => {}); // fire-and-forget
       navigate(`/?keyword=${encodeURIComponent(term)}`);
     } else {
       navigate(`/`);
@@ -34,7 +35,7 @@ const Header = () => {
 
   const { user } = useSelector((state) => state.auth);
 
-  // ⬇️ Ask the server for the cart only if logged in
+  // Ask the server for the cart only if logged in
   const { data: cartData } = useGetCartQuery(undefined, { skip: !user });
   const cartItems = cartData?.items || [];
 
@@ -43,99 +44,19 @@ const Header = () => {
     ? cartItems.reduce((acc, it) => acc + (it?.quantity || 0), 0)
     : 0;
 
-  const logoutHandler = async() => {
+  const logoutHandler = async () => {
     try {
-    // wait for server to clear the auth cookie/session
-      await logout().unwrap();
+      await logout().unwrap(); // clear cookie/session on server
     } catch (e) {
       console.error("Logout failed", e);
     } finally {
-      navigate(0);
+      navigate(0); // hard reload to clear client state
     }
   };
 
-  // return(
-  //   <header className="header section" role="banner">
-  //     <div className="container header__inner">
-  //       {/* Left LOGO (bar.png) */}
-  //       <Link to="/" href="#home" className="header__logo" aria-label="Brand home">
-  //         <img src="/images/bar.png" alt="Brand Logo" />
-  //       </Link>
-  //       {/* Center Search */}
-  //       <div className="header__search">
-  //         <form className="search" onSubmit={submitHandler}>
-  //           <button
-  //             className="search__button"
-  //             type="submit"
-  //             title="Search"
-  //             aria-label="Search"
-  //           >
-  //             {/* Minimal magnifier icon */}
-  //             <svg
-  //               className="icon"
-  //               viewBox="0 0 24 24"
-  //               fill="none"
-  //               stroke="currentColor"
-  //               strokeWidth={2}
-  //               strokeLinecap="round"
-  //               strokeLinejoin="round"
-  //               aria-hidden="true"
-  //             >
-  //               <circle cx={11} cy={11} r={8} />
-  //               <line x1={21} y1={21} x2="16.65" y2="16.65" />
-  //             </svg>
-  //           </button>
-  //           <input
-  //             className="search__input"
-  //             placeholder="Search all products…"
-  //             aria-label="Search"
-  //             type="text"
-  //             id="search_field"
-  //             aria-describedby="search_btn"
-  //             name="keyword"
-  //             value={keyword}
-  //             onChange={(e) => setKeyword(e.target.value)}
-  //           />
-  //         </form>
-  //       </div>
-  //       {/* Right Icons: Language / Cart / Settings (no radius) */}
-  //       <div className="header__icons" aria-label="Quick actions">
-  //         <button className="icon-btn" title="Language" aria-label="Language">
-  //           <svg
-  //             className="icon"
-  //             viewBox="0 0 24 24"
-  //             fill="none"
-  //             stroke="currentColor"
-  //             strokeWidth={2}
-  //             strokeLinecap="round"
-  //             strokeLinejoin="round"
-  //             aria-hidden="true"
-  //           >
-  //             <circle cx={12} cy={12} r={10} />
-  //             <path d="M2 12h20" />
-  //             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  //           </svg>
-  //         </button>
-  //         <button className="icon-btn" title="Cart" aria-label="Cart">
-  //           <svg
-  //             className="icon"
-  //             viewBox="0 0 24 24"
-  //             fill="none"
-  //             stroke="currentColor"
-  //             strokeWidth={2}
-  //             strokeLinecap="round"
-  //             strokeLinejoin="round"
-  //             aria-hidden="true"
-  //           >
-  //             <circle cx={9} cy={21} r={1} />
-  //             <circle cx={20} cy={21} r={1} />
-  //             <path d="M1 1h4l2.68 12.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-  //           </svg>
-  //         </button>
-  //       </div>
-  //     </div>
-  //   </header>
-  // );
+  // Quick nav helpers for the new buttons below the search bar
+  const goHome = () => navigate("/");
+  const goExplore = () => navigate("/explore");
 
   // -------------------------
   // Chinese layout (zh-CN)
@@ -152,7 +73,28 @@ const Header = () => {
         </div>
 
         <div className="col-12 col-md-6 mt-2 mt-md-0">
+          {/* Search bar */}
           <Search />
+
+          {/* NEW: Home / Explore buttons below the search bar */}
+          <div className="d-flex justify-content-center gap-2 mt-2">
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={goHome}
+              aria-label="Go Home"
+            >
+              Home
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={goExplore}
+              aria-label="Go Explore"
+            >
+              Explore
+            </button>
+          </div>
         </div>
 
         <div className="col-12 col-md-3 mt-4 mt-md-0 text-center">
@@ -195,9 +137,9 @@ const Header = () => {
                 )}
                 <Link className="dropdown-item" to="/me/orders">订单</Link>
                 <Link className="dropdown-item" to="/me/profile">个人资料</Link>
-                <Link className="dropdown-item text-danger" type="button" onClick={logoutHandler}>
+                <button className="dropdown-item text-danger" type="button" onClick={logoutHandler}>
                   退出登录
-                </Link>
+                </button>
               </div>
             </div>
           ) : (
@@ -226,7 +168,28 @@ const Header = () => {
       </div>
 
       <div className="col-12 col-md-6 mt-2 mt-md-0">
+        {/* Search bar */}
         <Search />
+
+        {/* NEW: Home / Explore buttons below the search bar */}
+        <div className="d-flex justify-content-center gap-2 mt-2">
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={goHome}
+            aria-label="Go Home"
+          >
+            Home
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={goExplore}
+            aria-label="Go Explore"
+          >
+            Explore
+          </button>
+        </div>
       </div>
 
       <div className="col-12 col-md-3 mt-4 mt-md-0 text-center">
@@ -269,9 +232,9 @@ const Header = () => {
               )}
               <Link className="dropdown-item" to="/me/orders">Orders</Link>
               <Link className="dropdown-item" to="/me/profile">Profile</Link>
-              <Link className="dropdown-item text-danger" type="button" onClick={logoutHandler}>
+              <button className="dropdown-item text-danger" type="button" onClick={logoutHandler}>
                 Logout
-              </Link>
+              </button>
             </div>
           </div>
         ) : (

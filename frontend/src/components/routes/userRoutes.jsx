@@ -1,6 +1,7 @@
 import React from "react";
 import { Route } from "react-router-dom";
 import Home from "../Home";
+import Explore from "../Explore";
 import ProductDetails from "../product/ProductDetails";
 import Login from "../auth/Login";
 import Register from "../auth/Register";
@@ -25,6 +26,7 @@ const userRoutes = () => {
   return (
     <>
       <Route path="/" element={<Home />} />
+      <Route path="/explore" element={<Explore />} />
       <Route path="/product/:id" element={<ProductDetails />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

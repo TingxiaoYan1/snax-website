@@ -4,6 +4,9 @@ D:\CMU\intern for Mr.He\Snax website
 |  ├── config
 |  |  ├── config.env
 |  |  └── dbConnect.js
+|  ├── constants
+|  |  ├── categories.js
+|  |  └── tags.js
 |  ├── controllers
 |  |  ├── authControllers.js
 |  |  ├── cartController.js
@@ -34,6 +37,7 @@ D:\CMU\intern for Mr.He\Snax website
 |  |  └── webhooks.js
 |  ├── seeder
 |  |  ├── data.js
+|  |  ├── migrate_to_l1_l2.js
 |  |  └── seeder.js
 |  └── utils
 |     ├── apiFilters.js
@@ -68,12 +72,12 @@ D:\CMU\intern for Mr.He\Snax website
 |  |  └── robots.txt
 |  ├── README.md
 |  └── src
-|     ├── AAtoken.css
 |     ├── App.css
 |     ├── App.js
 |     ├── components
 |     |  ├── admin
 |     |  |  ├── AdminCoupons.jsx
+|     |  |  ├── AdminGiftCoupons.jsx
 |     |  |  ├── Dashboard.jsx
 |     |  |  ├── ListOrders.jsx
 |     |  |  ├── ListProducts.jsx
@@ -94,14 +98,12 @@ D:\CMU\intern for Mr.He\Snax website
 |     |  |  └── VerifyEmailCode.jsx
 |     |  ├── cart
 |     |  |  ├── Cart.jsx
-|     |  |  ├── CheckoutSteps.jsx
-|     |  |  ├── ConfirmOrder.jsx
-|     |  |  ├── PaymentMethod.jsx
-|     |  |  └── Shipping.jsx
+|     |  |  └── Checkout.jsx
 |     |  ├── charts
 |     |  |  └── SalesChart.jsx
 |     |  ├── checkout
 |     |  |  └── SquareReturn.jsx
+|     |  ├── Explore.jsx
 |     |  ├── Home.jsx
 |     |  ├── invoice
 |     |  |  ├── invoice.css
@@ -156,12 +158,13 @@ D:\CMU\intern for Mr.He\Snax website
 |     |  |  ├── langSlice.js
 |     |  |  └── userSlice.js
 |     |  └── store.js
-|     └── setupProxy.js
+|     ├── setupProxy.js
+|     └── styles.css
 ├── package-lock.json
 ├── package.json
 ├── README.md
 └── repo-structure.txt
 
-directory: 4402 file: 31225
+directory: 4403 file: 31227
 
 ignored: directory (464)

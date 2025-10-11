@@ -1,4 +1,3 @@
-// backend/models/order.js
 import mongoose from "mongoose";
 
 const orderItemSchema = new mongoose.Schema(
@@ -46,12 +45,18 @@ const couponSnapshotSchema = new mongoose.Schema(
 const orderSchema = new mongoose.Schema(
   {
     shippingInfo: {
-      address: { type: String, required: true },
-      city: { type: String, required: true },
-      phoneNo: { type: String, required: true },
-      zipCode: { type: String, required: true },
-      country: { type: String, required: true },
+      // NEW FORMAT
+      country:   { type: String, required: true },
+      firstName: { type: String, required: true },
+      lastName:  { type: String, required: true },
+      address:   { type: String, required: true },
+      apartment: { type: String },               // optional
+      city:      { type: String, required: true },
+      state:     { type: String, required: true },
+      zip:       { type: String, required: true },
+      phone:     { type: String, required: true },
     },
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,

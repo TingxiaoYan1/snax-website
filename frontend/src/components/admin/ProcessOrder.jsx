@@ -1,177 +1,273 @@
-import React, { useEffect, useState } from 'react'
+// src/components/order/OrderDetails.jsx
+import React, { useEffect } from "react";
+import MetaData from "../layout/MetaData";
+import { useOrderDetailsQuery } from "../../redux/api/orderApi";
+import { Link, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 import Loader from "../layout/Loader";
-import toast from 'react-hot-toast';
-import {Link, useParams} from "react-router-dom";
-import MetaData from '../layout/MetaData'
-import AdminLayout from '../layout/AdminLayout';
-import { useOrderDetailsQuery, useUpdateOrderMutation } from '../../redux/api/orderApi';
 
-const ProcessOrder = () => {
+const money = (n) => Number(n ?? 0).toFixed(2);
 
-  const [status, setStatus] = useState("")
-
+const OrderDetails = () => {
   const params = useParams();
-  const {data}=useOrderDetailsQuery(params?.id);
+  const { data, isLoading, error } = useOrderDetailsQuery(params?.id);
   const order = data?.order || {};
 
-  const [updateOrder, {error, isSuccess}] = useUpdateOrderMutation()
-
-  const { 
-    shippingInfo, 
-    orderItems, 
+  const {
+    shippingInfo,
+    orderItems,
     paymentInfo,
     user,
     totalAmount,
     orderStatus,
+    itemsPrice,
+    taxAmount,
+    shippingAmount,
+    coupon,
   } = order;
 
-  const isPaid = paymentInfo?.status === "Paid" ? true : false;
+  const isPaid = paymentInfo?.status === "Paid";
 
   useEffect(() => {
-    if(orderStatus){
-        setStatus(orderStatus);
+    if (error) {
+      toast.error(error?.data?.message || "Failed to load order");
     }
-  }, [orderStatus]);
+  }, [error]);
 
-  useEffect(() => {
-    if(orderStatus){
-        setStatus(orderStatus);
-    }
-    if(error) {
-        toast.error(error?.data?.message);
-    }
+  if (isLoading) return <Loader />;
 
-    if(isSuccess) {
-        toast.success("Order updated")
-    }
-  }, [error,isSuccess]);
+  // --- Legacy compatibility & name fallbacks ---
+  const legacy = !shippingInfo?.firstName && !shippingInfo?.lastName;
+  const fullName = legacy
+    ? user?.name || "N/A"
+    : `${shippingInfo?.firstName || ""} ${shippingInfo?.lastName || ""}`.trim();
+  const phone = legacy ? shippingInfo?.phoneNo : shippingInfo?.phone;
+  const fullAddress = legacy
+    ? `${shippingInfo?.address || ""}, ${shippingInfo?.city || ""}, ${shippingInfo?.zipCode || ""}, ${shippingInfo?.country || ""}`
+    : `${shippingInfo?.address || ""}${
+        shippingInfo?.apartment ? `, ${shippingInfo.apartment}` : ""
+      }, ${shippingInfo?.city || ""}, ${shippingInfo?.state || ""}, ${
+        shippingInfo?.zip || ""
+      }, ${shippingInfo?.country || ""}`;
 
-  const updateOrderHandler = (id) => {
-    const data = {status}
-    updateOrder({id,body: data})
-  }
+  // Derive first/last if only user.name exists
+  const deriveFirstLastFromUser = () => {
+    const nm = (user?.name || "").trim();
+    if (!nm) return { first: "N/A", last: "N/A" };
+    const [first, ...rest] = nm.split(/\s+/);
+    return { first: first || "N/A", last: rest.join(" ") || "N/A" };
+  };
+  const derived = deriveFirstLastFromUser();
+  const displayFirst = shippingInfo?.firstName || derived.first;
+  const displayLast = shippingInfo?.lastName || derived.last;
 
   return (
-    <AdminLayout>
-        <MetaData title={"Process Order"}/>
-      <div className="row d-flex justify-content-around">
-      <div className="col-12 col-lg-8 order-details">
-        <h3 className="mt-5 mb-4">Order Details</h3>
+    <>
+      <MetaData title={"Order Details"} />
+      <div className="row d-flex justify-content-center">
+        <div className="col-12 col-lg-9 mt-5 order-details">
+          <div className="d-flex justify-content-between align-items-center">
+            <h3 className="mt-5 mb-4">Your Order Details</h3>
+            <a className="btn btn-success" href={`/invoice/order/${order?._id}`}>
+              <i className="fa fa-print"></i> Invoice
+            </a>
+          </div>
 
-        <table className="table table-striped table-bordered">
-          <tbody>
-            <tr>
-              <th scope="row">ID</th>
-              <td>{order?._id}</td>
-            </tr>
-            <tr>
-              <th scope="row">Order Status</th>
-              <td className={String(orderStatus).includes("Delivered")||String(orderStatus).includes("Refunded") ? "greenColor" : "redColor"}>
-                <b>{orderStatus}</b>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          {/* Top summary */}
+          <table className="table table-striped table-bordered">
+            <tbody>
+              <tr>
+                <th scope="row">ID</th>
+                <td>{order?._id}</td>
+              </tr>
+              <tr>
+                <th scope="row">Status</th>
+                <td className={String(orderStatus).includes("Delivered") ? "greenColor" : "redColor"}>
+                  <b>{orderStatus}</b>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Date</th>
+                <td>{new Date(order?.createdAt).toLocaleString("en-US")}</td>
+              </tr>
+            </tbody>
+          </table>
 
-        <h3 className="mt-5 mb-4">Shipping Info</h3>
-        <table className="table table-striped table-bordered">
-          <tbody>
-            <tr>
-              <th scope="row">Name</th>
-              <td>{user?.name}</td>
-            </tr>
-            <tr>
-              <th scope="row">Phone No</th>
-              <td>{shippingInfo?.phoneNo}</td>
-            </tr>
-            <tr>
-              <th scope="row">Address</th>
-              <td>{shippingInfo?.address}, {shippingInfo?.city}, 
-                {shippingInfo?.zipCode}, {shippingInfo?.country}</td>
-            </tr>
-          </tbody>
-        </table>
+          {/* Customer */}
+          <h3 className="mt-5 mb-4">Customer</h3>
+          <table className="table table-striped table-bordered">
+            <tbody>
+              <tr>
+                <th scope="row">Email</th>
+                <td>{user?.email || "—"}</td>
+              </tr>
+              <tr>
+                <th scope="row">User ID</th>
+                <td>{user?._id || "—"}</td>
+              </tr>
+              <tr>
+                <th scope="row">First Name</th>
+                <td>{displayFirst}</td>
+              </tr>
+              <tr>
+                <th scope="row">Last Name</th>
+                <td>{displayLast}</td>
+              </tr>
+            </tbody>
+          </table>
 
-        <h3 className="mt-5 mb-4">Payment Info</h3>
-        <table className="table table-striped table-bordered">
-          <tbody>
-            <tr>
-              <th scope="row">Status</th>
-              <td className={isPaid ? "greenColor" : "redColor"}>
-                <b>{paymentInfo?.status}</b>
-              </td>
-            </tr>
-            <tr>
-              <th scope="row">Method</th>
-              <td>{order?.paymentMethod}</td>
-            </tr>
-            <tr>
-              <th scope="row">Square ID</th>
-              <td>{paymentInfo?.id || "Nill"}</td>
-            </tr>
-            <tr>
-              <th scope="row">Amount Paid</th>
-              <td>${totalAmount}</td>
-            </tr>
-          </tbody>
-        </table>
+          {/* Order Items */}
+          <h3 className="mt-5 my-4">Order Items</h3>
+          <hr />
+          <div className="cart-item my-1">
+            {orderItems?.map((item, idx) => (
+              <div className="row my-5" key={`${item?.product || item?.name}-${idx}`}>
+                <div className="col-4 col-lg-2">
+                  <img src={item?.image} alt={item?.name} height="45" width="65" />
+                </div>
+                <div className="col-5 col-lg-5">
+                  {item?.product ? (
+                    <Link to={`/product/${item?.product}`}>{item?.name}</Link>
+                  ) : (
+                    <span>{item?.name}</span>
+                  )}
+                  {item?.isGift && <div className="badge bg-success text-white ms-2">Gift</div>}
+                </div>
+                <div className="col-4 col-lg-2 mt-4 mt-lg-0">
+                  <p>${money(item?.price)}</p>
+                </div>
+                <div className="col-4 col-lg-3 mt-4 mt-lg-0">
+                  <p>{item?.quantity} Piece(s)</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <hr />
 
-        <h3 className="mt-5 my-4">Order Items:</h3>
+          {/* Coupon / Discount */}
+          <h3 className="mt-5 mb-4">Coupon / Discount</h3>
+          {coupon ? (
+            <table className="table table-striped table-bordered">
+              <tbody>
+                <tr>
+                  <th scope="row">Code</th>
+                  <td>{coupon?.code || "—"}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Type</th>
+                  <td>{coupon?.type || "percentage"}</td>
+                </tr>
+                {coupon?.type === "percentage" ? (
+                  <>
+                    <tr>
+                      <th scope="row">Percentage</th>
+                      <td>{coupon?.percentage != null ? `${coupon.percentage}%` : "—"}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Max Deduction</th>
+                      <td>{coupon?.maxDeduction != null ? `$${money(coupon.maxDeduction)}` : "—"}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Amount Deducted</th>
+                      <td className="text-success"><b>- ${money(coupon?.discountApplied || 0)}</b></td>
+                    </tr>
+                  </>
+                ) : (
+                  <>
+                    <tr>
+                      <th scope="row">Gift Threshold</th>
+                      <td>${money(coupon?.threshold || 0)}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Gift Item</th>
+                      <td>
+                        {coupon?.gift?.productId ? (
+                          <Link to={`/product/${coupon.gift.productId}`}>Product</Link>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Gift Quantity</th>
+                      <td>{coupon?.gift?.qty || 1}</td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <div className="alert alert-secondary">No coupon applied.</div>
+          )}
 
-        <hr />
-        <div className="cart-item my-1">
-          {orderItems?.map((item) => (
-            <div className="row my-5">
-            <div className="col-4 col-lg-2">
-            <img
-                src={item?.image}
-                alt={item?.name}
-                height="45"
-                width="65"
-            />
-            </div>
+          {/* Pricing Summary */}
+          <h3 className="mt-5 mb-4">Pricing Summary</h3>
+          <table className="table table-striped table-bordered">
+            <tbody>
+              <tr>
+                <th scope="row">Items (after discount)</th>
+                <td>${money(itemsPrice)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Shipping</th>
+                <td>${money(shippingAmount)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Tax</th>
+                <td>${money(taxAmount)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Total Paid</th>
+                <td><b>${money(totalAmount)}</b></td>
+              </tr>
+            </tbody>
+          </table>
 
-            <div className="col-5 col-lg-5">
-            <Link to={`/product/${item?.product}`}>{item?.name}</Link>
-            </div>
+          {/* Shipping Info */}
+          <h3 className="mt-5 mb-4">Shipping Info</h3>
+          <table className="table table-striped table-bordered">
+            <tbody>
+              <tr>
+                <th scope="row">Name</th>
+                <td>{fullName || "N/A"}</td>
+              </tr>
+              <tr>
+                <th scope="row">Phone</th>
+                <td>{phone || "—"}</td>
+              </tr>
+              <tr>
+                <th scope="row">Address</th>
+                <td>{fullAddress || "—"}</td>
+              </tr>
+            </tbody>
+          </table>
 
-            <div className="col-4 col-lg-2 mt-4 mt-lg-0">
-            <p>${item?.price}</p>
-            </div>
-
-            <div className="col-4 col-lg-3 mt-4 mt-lg-0">
-            <p>{item?.quantity} Piece(s)</p>
-            </div>
+          {/* Payment Info */}
+          <h3 className="mt-5 mb-4">Payment Info</h3>
+          <table className="table table-striped table-bordered">
+            <tbody>
+              <tr>
+                <th scope="row">Status</th>
+                <td className={isPaid ? "greenColor" : "redColor"}>
+                  <b>{paymentInfo?.status}</b>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Method</th>
+                <td>{order?.paymentMethod}</td>
+              </tr>
+              <tr>
+                <th scope="row">Square ID</th>
+                <td>{paymentInfo?.id || "N/A"}</td>
+              </tr>
+              <tr>
+                <th scope="row">Amount Paid</th>
+                <td>${money(totalAmount)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        ))}
-        </div>
-        <hr />
       </div>
+    </>
+  );
+};
 
-      <div className="col-12 col-lg-3 mt-5">
-        <h4 className="my-4">Status</h4>
-
-        <div className="mb-3">
-          <select className="form-select" name="status" value={status} 
-            onChange={(e) => setStatus(e.target.value)}>
-            <option value="Processing">Processing</option>
-            <option value="Shipped">Shipped</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Refunding">Refunding</option>
-            <option value="Refunded">Refunded</option>
-          </select>
-        </div>
-
-        <button className="btn btn-primary w-100" onClick={() => updateOrderHandler(order?._id)}>Update Status</button>
-
-        <h4 className="mt-5 mb-3">Order Invoice</h4>
-        <Link to={`/invoice/order/${order?._id}`} className="btn btn-success w-100">
-          <i className="fa fa-print"></i> Generate Invoice
-        </Link>
-      </div>
-    </div>
-    </AdminLayout>
-  )
-}
-
-export default ProcessOrder
+export default OrderDetails;

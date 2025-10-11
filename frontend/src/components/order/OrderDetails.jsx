@@ -35,6 +35,22 @@ const OrderDetails = () => {
 
   if (isLoading) return <Loader />;
 
+  // Graceful fallback for legacy data
+  const legacy = !shippingInfo?.firstName && !shippingInfo?.lastName;
+  const fullName = legacy
+    ? user?.name || "N/A"
+    : `${shippingInfo?.firstName || ""} ${shippingInfo?.lastName || ""}`.trim();
+
+  const fullAddress = legacy
+    ? `${shippingInfo?.address || ""}, ${shippingInfo?.city || ""}, ${shippingInfo?.zipCode || ""}, ${shippingInfo?.country || ""}`
+    : `${shippingInfo?.address || ""}${
+        shippingInfo?.apartment ? `, ${shippingInfo.apartment}` : ""
+      }, ${shippingInfo?.city || ""}, ${shippingInfo?.state || ""}, ${
+        shippingInfo?.zip || ""
+      }, ${shippingInfo?.country || ""}`;
+
+  const phone = legacy ? shippingInfo?.phoneNo : shippingInfo?.phone;
+
   return (
     <>
       <MetaData title={"Order Details"} />
@@ -47,7 +63,7 @@ const OrderDetails = () => {
             </a>
           </div>
 
-          {/* Top summary table */}
+          {/* Top summary */}
           <table className="table table-striped table-bordered">
             <tbody>
               <tr>
@@ -56,7 +72,11 @@ const OrderDetails = () => {
               </tr>
               <tr>
                 <th scope="row">Status</th>
-                <td className={String(orderStatus).includes("Delivered") ? "greenColor" : "redColor"}>
+                <td
+                  className={
+                    String(orderStatus).includes("Delivered") ? "greenColor" : "redColor"
+                  }
+                >
                   <b>{orderStatus}</b>
                 </td>
               </tr>
@@ -67,7 +87,7 @@ const OrderDetails = () => {
             </tbody>
           </table>
 
-          {/* ---- ORDER ITEMS moved to the top ---- */}
+          {/* Order Items */}
           <h3 className="mt-5 my-4">Order Items</h3>
           <hr />
           <div className="cart-item my-1">
@@ -83,6 +103,9 @@ const OrderDetails = () => {
                   ) : (
                     <span>{item?.name}</span>
                   )}
+                  {item?.isGift && (
+                    <div className="badge bg-success text-white ms-2">Gift</div>
+                  )}
                 </div>
 
                 <div className="col-4 col-lg-2 mt-4 mt-lg-0">
@@ -97,7 +120,7 @@ const OrderDetails = () => {
           </div>
           <hr />
 
-          {/* ---- Coupon / Discount section ---- */}
+          {/* Coupon / Discount */}
           <h3 className="mt-5 mb-4">Coupon / Discount</h3>
           {coupon ? (
             <table className="table table-striped table-bordered">
@@ -107,26 +130,53 @@ const OrderDetails = () => {
                   <td>{coupon?.code || "—"}</td>
                 </tr>
                 <tr>
-                  <th scope="row">Percentage</th>
-                  <td>{coupon?.percentage != null ? `${coupon.percentage}%` : "—"}</td>
+                  <th scope="row">Type</th>
+                  <td>{coupon?.type || "percentage"}</td>
                 </tr>
-                <tr>
-                  <th scope="row">Max Deduction</th>
-                  <td>{coupon?.maxDeduction != null ? `$${money(coupon.maxDeduction)}` : "—"}</td>
-                </tr>
-                <tr>
-                  <th scope="row">Amount Deducted</th>
-                  <td className="text-success">
-                    <b>- ${money(coupon?.discountApplied || 0)}</b>
-                  </td>
-                </tr>
+                {coupon?.type === "percentage" ? (
+                  <>
+                    <tr>
+                      <th scope="row">Percentage</th>
+                      <td>{coupon?.percentage != null ? `${coupon.percentage}%` : "—"}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Max Deduction</th>
+                      <td>
+                        {coupon?.maxDeduction != null
+                          ? `$${money(coupon.maxDeduction)}`
+                          : "—"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Amount Deducted</th>
+                      <td className="text-success">
+                        <b>- ${money(coupon?.discountApplied || 0)}</b>
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <>
+                    <tr>
+                      <th scope="row">Gift Threshold</th>
+                      <td>${money(coupon?.threshold || 0)}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Gift Item</th>
+                      <td>{coupon?.gift?.productId ? <Link to={`/product/${coupon.gift.productId}`}>Product</Link> : "—"}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Gift Quantity</th>
+                      <td>{coupon?.gift?.qty || 1}</td>
+                    </tr>
+                  </>
+                )}
               </tbody>
             </table>
           ) : (
             <div className="alert alert-secondary">No coupon applied.</div>
           )}
 
-          {/* ---- Optional: Pricing Summary (uses values saved on order) ---- */}
+          {/* Pricing Summary */}
           <h3 className="mt-5 mb-4">Pricing Summary</h3>
           <table className="table table-striped table-bordered">
             <tbody>
@@ -151,29 +201,26 @@ const OrderDetails = () => {
             </tbody>
           </table>
 
-          {/* ---- Shipping Info ---- */}
+          {/* Shipping Info */}
           <h3 className="mt-5 mb-4">Shipping Info</h3>
           <table className="table table-striped table-bordered">
             <tbody>
               <tr>
                 <th scope="row">Name</th>
-                <td>{user?.name}</td>
+                <td>{fullName || "N/A"}</td>
               </tr>
               <tr>
-                <th scope="row">Phone No</th>
-                <td>{shippingInfo?.phoneNo}</td>
+                <th scope="row">Phone</th>
+                <td>{phone || "—"}</td>
               </tr>
               <tr>
                 <th scope="row">Address</th>
-                <td>
-                  {shippingInfo?.address}, {shippingInfo?.city}, {shippingInfo?.zipCode},{" "}
-                  {shippingInfo?.country}
-                </td>
+                <td>{fullAddress || "—"}</td>
               </tr>
             </tbody>
           </table>
 
-          {/* ---- Payment Info ---- */}
+          {/* Payment Info */}
           <h3 className="mt-5 mb-4">Payment Info</h3>
           <table className="table table-striped table-bordered">
             <tbody>
@@ -189,7 +236,7 @@ const OrderDetails = () => {
               </tr>
               <tr>
                 <th scope="row">Square ID</th>
-                <td>{paymentInfo?.id || "Nill"}</td>
+                <td>{paymentInfo?.id || "N/A"}</td>
               </tr>
               <tr>
                 <th scope="row">Amount Paid</th>

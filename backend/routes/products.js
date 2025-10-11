@@ -14,7 +14,8 @@ import {
     deleteProductImages,
     getInitializedCategories,
     getInitializedTags,
-    getRandomProducts
+    getRandomProducts,
+    getExploreProducts
 } from "../controllers/productControllers.js";
 import { authorizeRoles, isAuthenticatedUser } from "../middlewares/auth.js";
 const router = express.Router();
@@ -24,6 +25,7 @@ router.route("/products").get(getProducts);
 router.route("/products/categories").get(getInitializedCategories);
 router.route("/products/tags/schema").get(getInitializedTags);
 router.get("/products/random", getRandomProducts);
+router.get("/products/explore", getExploreProducts);
 
 router.route("/admin/products")
     .post(isAuthenticatedUser, authorizeRoles("admin"),newProduct)

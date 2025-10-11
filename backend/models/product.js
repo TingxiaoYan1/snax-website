@@ -69,7 +69,7 @@ const productSchema = new mongoose.Schema(
         comment: { type: String, required: true },
       },
     ],
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
     chinesedescription: { type: String },
     expiredate: { type: String, default: "1 Month" },
 

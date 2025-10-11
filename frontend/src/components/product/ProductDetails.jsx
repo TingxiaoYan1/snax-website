@@ -11,10 +11,9 @@ import NewReview from "../reviews/NewReview";
 import ListReviews from "../reviews/ListReviews";
 import { selectLocale } from "../../redux/features/langSlice";
 
-/** Optional: if you added the tag schema endpoint/hook */
 import { useGetInitializedTagsQuery } from "../../redux/api/productsApi";
+import NotFound from "../layout/NotFound";
 
-/** Human labels (also works for future keys – we’ll title-case unknowns) */
 const LABELS_EN = {
   sour: "Sour",
   sweet: "Sweet",
@@ -122,6 +121,10 @@ const ProductDetails = () => {
   };
 
   if (isLoading) return <Loader />;
+
+  if(error && error?.status == 404) {
+    return <NotFound />
+  }
 
   // ------------------------------- ZH VIEW ---------------------------------
   if (locale === "zh") {

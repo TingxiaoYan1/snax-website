@@ -141,13 +141,17 @@ export const squareCheckoutSession = catchAsyncErrors(async (req, res, next) => 
       });
     }
 
-    // 7) Metadata (strings only)
+    // 7) Metadata (strings only)  — UPDATED FIELD NAMES
     const shippingInfo = {
-      address: req.body?.shippingInfo?.address || "",
-      city: req.body?.shippingInfo?.city || "",
-      phoneNo: req.body?.shippingInfo?.phoneNo || "",
-      zipCode: req.body?.shippingInfo?.zipCode || "",
-      country: req.body?.shippingInfo?.country || "",
+      country:   req.body?.shippingInfo?.country || "",
+      firstName: req.body?.shippingInfo?.firstName || "",
+      lastName:  req.body?.shippingInfo?.lastName || "",
+      address:   req.body?.shippingInfo?.address || "",
+      apartment: req.body?.shippingInfo?.apartment || "",
+      city:      req.body?.shippingInfo?.city || "",
+      state:     req.body?.shippingInfo?.state || "",
+      zip:       req.body?.shippingInfo?.zip || "",
+      phone:     req.body?.shippingInfo?.phone || "",
     };
 
     const meta = {
@@ -186,7 +190,8 @@ export const squareCheckoutSession = catchAsyncErrors(async (req, res, next) => 
         metadata: meta,
       },
       checkoutOptions: {
-        redirectUrl: `${process.env.FRONTEND_URL}/square/return`,
+        //redirectUrl: `${process.env.FRONTEND_URL}/square/return`,
+        redirectUrl: `http://localhost:4000/square/return`,
         merchantSupportEmail: "support@snaxplanet.com",
       },
     });
@@ -206,12 +211,9 @@ export const squareCheckoutSession = catchAsyncErrors(async (req, res, next) => 
 });
 
 /* --------------------------- Square Webhook (raw) ------------------------- */
-// backend/controllers/paymentControllers.js
-// REPLACE the whole squareWebhook function with this robust version
-
+// REPLACED ONLY THE shippingInfo MAPPING WHEN CREATING DB ORDER
 export const squareWebhook = async (req, res) => {
   try {
-    /* ------------------------ 0) Parse raw / string / JSON body ------------------------ */
     let rawBodyStr = "";
     if (Buffer.isBuffer(req.body)) rawBodyStr = req.body.toString("utf8");
     else if (typeof req.body === "string") rawBodyStr = req.body;
@@ -222,19 +224,13 @@ export const squareWebhook = async (req, res) => {
 
     const type = event?.type || "";
     const dataObj = event?.data?.object || {};
-    // TEMP DEBUG (remove after confirming)
-    console.log("[WH] content-type:", req.headers["content-type"]);
-    console.log("[WH] typeof body:", typeof req.body, "Buffer?", Buffer.isBuffer(req.body), "len:", Buffer.isBuffer(req.body) ? req.body.length : (rawBodyStr || "").length);
-    console.log("[WH] event type:", type);
-
-    /* ------------------- 1) Get payment/order objects & resolve orderId ------------------ */
     const payment = dataObj.payment || null;
     const orderFromEvent = dataObj.order || null;
     const checkoutObj = dataObj.checkout || dataObj.paymentLink || null;
 
     let orderId =
-      payment?.orderId ||               // camelCase (SDK)
-      payment?.order_id ||              // snake_case (webhooks JSON)
+      payment?.orderId ||
+      payment?.order_id ||
       orderFromEvent?.id ||
       checkoutObj?.orderId ||
       checkoutObj?.order?.id ||
@@ -245,7 +241,6 @@ export const squareWebhook = async (req, res) => {
       return res.status(200).json({ received: true });
     }
 
-    /* ------------------------ 2) Retrieve Square Order if needed ------------------------ */
     const client = getSquareClient();
     let sqOrder = orderFromEvent || null;
     if (!sqOrder) {
@@ -261,7 +256,6 @@ export const squareWebhook = async (req, res) => {
       }
     }
 
-    /* -------------------------- 3) Read metadata we attached ---------------------------- */
     const meta = sqOrder.metadata || {};
     let shippingInfo = {};
     try { if (meta.shippingInfo) shippingInfo = JSON.parse(meta.shippingInfo); } catch {}
@@ -270,7 +264,7 @@ export const squareWebhook = async (req, res) => {
       couponId: meta.couponId || null,
       scope: meta.couponScope || undefined,
       code: meta.couponCode || undefined,
-      type: meta.couponType || undefined, // "percentage" | "free_gift"
+      type: meta.couponType || undefined,
       percentage: meta.couponPct != null ? Number(meta.couponPct) : undefined,
       maxDeduction: meta.couponMaxDeduction != null ? Number(meta.couponMaxDeduction) : undefined,
       giftProductId: meta.giftProductId || undefined,
@@ -278,14 +272,12 @@ export const squareWebhook = async (req, res) => {
       threshold: meta.threshold != null ? Number(meta.threshold) : undefined,
     };
 
-    /* ---------------- 4) Build product lines from Square order lineItems ----------------- */
     const sqItems = Array.isArray(sqOrder.lineItems) ? sqOrder.lineItems : [];
     const productLines = sqItems.filter((li) => {
       const nm = (li?.name || "").toLowerCase();
       return nm !== "shipping" && nm !== "tax";
     });
 
-    // Extract productId/image from our line-item note JSON
     const rawLines = [];
     for (const li of productLines) {
       const qty = Math.max(1, parseInt(li?.quantity || "1", 10));
@@ -300,7 +292,6 @@ export const squareWebhook = async (req, res) => {
       });
     }
 
-    // Fetch canonical DB product info (name/price/image) for those ids
     const ids = [...new Set(rawLines.map((r) => r.productId).filter(Boolean))];
     const products = ids.length
       ? await Product.find({ _id: { $in: ids } }).select("name price images").lean()
@@ -313,17 +304,15 @@ export const squareWebhook = async (req, res) => {
       return {
         product: r.productId || undefined,
         name: p?.name || r.fallbackName || "Item",
-        price: unitPrice.toFixed(2), // <-- your schema stores String
+        price: unitPrice.toFixed(2),
         quantity: Math.max(1, Math.floor(r.qty || 1)),
         image: p?.images?.[0]?.url || r.fallbackImage,
         isGift: false,
       };
     });
 
-    /* ---------------------- 5) Totals, discounts, free gift logic ----------------------- */
     const preSubtotal = orderItems.reduce((s, it) => s + Number(it.price) * it.quantity, 0);
 
-    // If only couponId is present, backfill payload from DB
     if (!couponMeta.type && couponMeta.couponId && mongoose.isValidObjectId(couponMeta.couponId)) {
       const cdoc = await Coupon.findById(couponMeta.couponId).lean().catch(() => null);
       if (cdoc) {
@@ -341,7 +330,6 @@ export const squareWebhook = async (req, res) => {
       }
     }
 
-    // Percentage discount (free_gift does not change price)
     const pct = couponMeta.type === "percentage" ? Number(couponMeta.percentage || 0) : 0;
     const cap = couponMeta.type === "percentage" && couponMeta.maxDeduction != null
       ? Number(couponMeta.maxDeduction)
@@ -351,13 +339,11 @@ export const squareWebhook = async (req, res) => {
     const discountApplied = Number(Math.min(nominalDiscount, cap).toFixed(2));
     const discountedSubtotal = Math.max(0, Number((preSubtotal - discountApplied).toFixed(2)));
 
-    // Shipping/Tax (same rules as elsewhere)
     const shippingAmount = discountedSubtotal > 200 ? 0 : 5;
     const taxAmount = Number((0.15 * discountedSubtotal).toFixed(2));
     const itemsPrice = discountedSubtotal;
     const totalAmount = Number((itemsPrice + shippingAmount + taxAmount).toFixed(2));
 
-    // FREE-GIFT: append a $0 line if threshold met (threshold uses PRE-discount subtotal, before tax/shipping)
     let appendedGift = null;
     if (couponMeta.type === "free_gift") {
       const ok =
@@ -382,7 +368,6 @@ export const squareWebhook = async (req, res) => {
       }
     }
 
-    // Coupon snapshot for DB order
     const couponSnapshot =
       couponMeta.type === "percentage" && pct > 0
         ? {
@@ -409,7 +394,6 @@ export const squareWebhook = async (req, res) => {
           }
         : undefined;
 
-    /* ------------------------------ 6) Identify the user ------------------------------- */
     const ref = sqOrder?.referenceId || "";
     const userId = mongoose.isValidObjectId(ref) ? ref : null;
     if (!userId) {
@@ -417,22 +401,25 @@ export const squareWebhook = async (req, res) => {
       return res.status(200).json({ received: true });
     }
 
-    /* --------------------------- 7) Idempotency for payments ---------------------------- */
     if (payment?.id) {
       const dup = await Order.findOne({ "paymentInfo.id": payment.id, paymentMethod: "Card" }).select("_id").lean();
       if (dup) return res.status(200).json({ received: true });
     }
 
-    /* -------------------------------- 8) Create DB order -------------------------------- */
+    // UPDATED shippingInfo KEYS WHEN CREATING ORDER
     const order = await Order.create({
       user: userId,
       orderItems,
       shippingInfo: {
-        address: shippingInfo.address || "",
-        city: shippingInfo.city || "",
-        phoneNo: shippingInfo.phoneNo || "",
-        zipCode: shippingInfo.zipCode || "",
-        country: shippingInfo.country || "",
+        country:   shippingInfo.country || "",
+        firstName: shippingInfo.firstName || "",
+        lastName:  shippingInfo.lastName || "",
+        address:   shippingInfo.address || "",
+        apartment: shippingInfo.apartment || "",
+        city:      shippingInfo.city || "",
+        state:     shippingInfo.state || "",
+        zip:       shippingInfo.zip || "",
+        phone:     shippingInfo.phone || "",
       },
       itemsPrice: Number(itemsPrice.toFixed(2)),
       taxAmount: Number(taxAmount.toFixed(2)),
@@ -446,7 +433,6 @@ export const squareWebhook = async (req, res) => {
       },
     });
 
-    /* ------------------- 9) Stock decrement & clear cart (fire-and-forget) ------------------- */
     for (const it of order.orderItems || []) {
       if (it.product && mongoose.isValidObjectId(it.product)) {
         try { await Product.updateOne({ _id: it.product }, { $inc: { stock: -it.quantity } }); } catch {}
@@ -454,7 +440,6 @@ export const squareWebhook = async (req, res) => {
     }
     await Cart.updateOne({ user: userId }, { $set: { items: [] } }).catch(() => {});
 
-    /* ----------------------- 10) Mark coupon redeemed/used if present ---------------------- */
     if (couponMeta.couponId && mongoose.isValidObjectId(couponMeta.couponId)) {
       try {
         const couponDoc = await Coupon.findById(couponMeta.couponId).lean();
