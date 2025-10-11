@@ -190,8 +190,8 @@ export const squareCheckoutSession = catchAsyncErrors(async (req, res, next) => 
         metadata: meta,
       },
       checkoutOptions: {
-        //redirectUrl: `${process.env.FRONTEND_URL}/square/return`,
-        redirectUrl: `http://localhost:4000/square/return`,
+        redirectUrl: `${process.env.FRONTEND_URL}/square/return`,
+        //redirectUrl: `http://localhost:4000/square/return`,
         merchantSupportEmail: "support@snaxplanet.com",
       },
     });
