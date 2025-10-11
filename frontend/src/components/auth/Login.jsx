@@ -16,13 +16,23 @@ const Login = () => {
     const { isAuthenticated } = useSelector((state) => state.auth);
 
     useEffect(() => {
-        if(isAuthenticated){
-          navigate("/");
-        }
-        if(error) {
-            toast.error(error?.data?.message);
-        }
-    }, [error, isAuthenticated]);
+      if (isAuthenticated) navigate("/");
+    }, [isAuthenticated, navigate]);
+    
+    // Handle login errors (including EMAIL_UNVERIFIED)
+    useEffect(() => {
+      if (!error) return;
+      // RTK Query may set either error.status or error.originalStatus
+      const status = error?.status ?? error?.originalStatus;
+      const code = error?.data?.error;
+  
+     if (status === 403 && code === "EMAIL_UNVERIFIED") {
+        const targetEmail = error?.data?.email || email;
+        navigate(`/verify-email-code?email=${encodeURIComponent(targetEmail)}`);
+        return;
+      }
+      toast.error(error?.data?.message || "Login failed");
+    }, [error, email, navigate]);
 
     const submitHandler = (e) => {
         e.preventDefault();

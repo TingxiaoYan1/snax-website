@@ -64,6 +64,7 @@ D:\CMU\intern for Mr.He\Snax website
 |  |  |  ├── order_success.png
 |  |  |  ├── product.jpg
 |  |  |  ├── shopit_logo.png
+|  |  |  ├── shopit_logo1.png
 |  |  |  └── snake.png
 |  |  ├── index.html
 |  |  ├── logo192.png
@@ -118,6 +119,7 @@ D:\CMU\intern for Mr.He\Snax website
 |     |  |  ├── Loader.jsx
 |     |  |  ├── MetaData.jsx
 |     |  |  ├── MyCoupons.jsx
+|     |  |  ├── NotFound.jsx
 |     |  |  ├── Search.jsx
 |     |  |  ├── SideMenu.jsx
 |     |  |  └── UserLayout.jsx
@@ -163,8 +165,9 @@ D:\CMU\intern for Mr.He\Snax website
 ├── package-lock.json
 ├── package.json
 ├── README.md
-└── repo-structure.txt
+├── repo-structure.txt
+└── ss.env
 
-directory: 4403 file: 31227
+directory: 4406 file: 31247
 
 ignored: directory (464)

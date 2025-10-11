@@ -13,11 +13,6 @@ import crypto from "crypto";
 import { delete_file, upload_file } from "../utils/cloudinary.js";
 
 /* =========================================================
- * Helpers for code verification
- * =======================================================*/
-const MAX_VERIFY_ATTEMPTS = Number(process.env.MAX_VERIFY_ATTEMPTS || 5);
-
-/* =========================================================
  * Auth / Account
  * =======================================================*/
 
@@ -38,6 +33,7 @@ export const registerUser = catchAsyncErrors(async (req, res, next) => {
     emailVerified: false,
   });
 
+  // setEmailVerifyCode() should set the hash/expiry and any cooldown fields you maintain
   const code = user.setEmailVerifyCode();
   await user.save();
 
@@ -55,9 +51,9 @@ export const registerUser = catchAsyncErrors(async (req, res, next) => {
       message: `Account created. We sent a verification code to ${user.email}.`,
     });
   } catch (err) {
+    // rollback code fields on failure to send
     user.emailVerifyCodeHash = undefined;
     user.emailVerifyCodeExpire = undefined;
-    user.emailVerifyAttempts = 0;
     await user.save();
 
     return next(new ErrorHandler(err?.message || "Email could not be sent", 500));
@@ -65,11 +61,14 @@ export const registerUser = catchAsyncErrors(async (req, res, next) => {
 });
 
 // Resend verification code  =>  POST /api/v1/email/code/send   { email }
+// NOTE: no max attempts; rely on your cooldown inside setEmailVerifyCode()
 export const sendVerificationCode = catchAsyncErrors(async (req, res, next) => {
   const { email } = req.body;
   if (!email) return next(new ErrorHandler("Email is required", 400));
 
-  const user = await User.findOne({ email }).select("+emailVerifyCodeHash +emailVerifyAttempts +emailVerifyCodeExpire");
+  const user = await User.findOne({ email }).select(
+    "+emailVerifyCodeHash +emailVerifyCodeExpire"
+  );
   if (!user) return next(new ErrorHandler("User not found", 404));
   if (user.emailVerified) return next(new ErrorHandler("Email is already verified", 400));
 
@@ -90,14 +89,13 @@ export const sendVerificationCode = catchAsyncErrors(async (req, res, next) => {
   } catch (err) {
     user.emailVerifyCodeHash = undefined;
     user.emailVerifyCodeExpire = undefined;
-    user.emailVerifyAttempts = 0;
     await user.save();
     return next(new ErrorHandler(err?.message || "Email could not be sent", 500));
   }
 });
 
 // Verify 6-char code  =>  POST /api/v1/email/code/verify   { email, code }
-// Verify 6-char code  =>  POST /api/v1/email/code/verify   { email, code }
+// No max-attempts check; if the code is wrong, just return 400.
 export const verifyEmailCode = catchAsyncErrors(async (req, res, next) => {
   const { email, code } = req.body;
   if (!email || !code) {
@@ -105,7 +103,7 @@ export const verifyEmailCode = catchAsyncErrors(async (req, res, next) => {
   }
 
   const user = await User.findOne({ email }).select(
-    "+emailVerifyCodeHash +emailVerifyCodeExpire +emailVerifyAttempts +password"
+    "+emailVerifyCodeHash +emailVerifyCodeExpire +password"
   );
   if (!user) return next(new ErrorHandler("User not found", 404));
 
@@ -115,12 +113,9 @@ export const verifyEmailCode = catchAsyncErrors(async (req, res, next) => {
   }
 
   if (!user.emailVerifyCodeExpire || user.emailVerifyCodeExpire.getTime() < Date.now()) {
-    return next(new ErrorHandler("Verification code has expired. Please request a new one.", 400));
-  }
-
-  const MAX_VERIFY_ATTEMPTS = Number(process.env.MAX_VERIFY_ATTEMPTS || 5);
-  if (user.emailVerifyAttempts >= MAX_VERIFY_ATTEMPTS) {
-    return next(new ErrorHandler("Too many attempts. Please request a new code.", 429));
+    return next(
+      new ErrorHandler("Verification code has expired. Please request a new one.", 400)
+    );
   }
 
   // Normalize input to UPPERCASE then hash & compare
@@ -128,8 +123,6 @@ export const verifyEmailCode = catchAsyncErrors(async (req, res, next) => {
   const hashed = crypto.createHash("sha256").update(incoming).digest("hex");
 
   if (hashed !== user.emailVerifyCodeHash) {
-    user.emailVerifyAttempts += 1;
-    await user.save();
     return next(new ErrorHandler("Invalid verification code.", 400));
   }
 
@@ -137,14 +130,14 @@ export const verifyEmailCode = catchAsyncErrors(async (req, res, next) => {
   user.emailVerified = true;
   user.emailVerifyCodeHash = undefined;
   user.emailVerifyCodeExpire = undefined;
-  user.emailVerifyAttempts = 0;
   await user.save();
 
-  // ⬇️ Auto-login right away (sets cookie + returns user)
+  // Auto-login right away (sets cookie + returns user)
   return sendToken(user, 200, res);
 });
 
 // Login  =>  POST /api/v1/login
+// If not verified, return a structured 403 so the frontend can redirect to /verify-email
 export const loginUser = catchAsyncErrors(async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -155,20 +148,26 @@ export const loginUser = catchAsyncErrors(async (req, res, next) => {
   const user = await User.findOne({ email }).select("+password");
   if (!user) return next(new ErrorHandler("Invalid email or password", 401));
 
-  if (!user.emailVerified) {
-    return next(new ErrorHandler("Please verify your email before logging in.", 403));
-  }
-
   const isPasswordMatched = await user.comparePassword(password);
   if (!isPasswordMatched) {
     return next(new ErrorHandler("Invalid email or password", 401));
+  }
+
+  if (!user.emailVerified) {
+    // << Key change: return a JSON the client can detect and redirect on
+    return res.status(403).json({
+      success: false,
+      error: "EMAIL_UNVERIFIED",
+      message: "Please verify your email before logging in.",
+      email: user.email,
+    });
   }
 
   sendToken(user, 200, res);
 });
 
 // Logout user  =>  GET /api/v1/logout
-export const logout = catchAsyncErrors(async (req, res) => {
+export const logout = catchAsyncErrors(async (_req, res) => {
   res.cookie("token", null, { expires: new Date(Date.now()), httpOnly: true });
   res.status(200).json({ message: "Logged Out" });
 });
@@ -202,7 +201,10 @@ export const forgotPassword = catchAsyncErrors(async (req, res, next) => {
 
 // Reset password  =>  PUT /api/v1/password/reset/:token
 export const resetPassword = catchAsyncErrors(async (req, res, next) => {
-  const resetPasswordToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+  const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
 
   const user = await User.findOne({
     resetPasswordToken,
@@ -210,7 +212,9 @@ export const resetPassword = catchAsyncErrors(async (req, res, next) => {
   });
 
   if (!user) {
-    return next(new ErrorHandler("Password reset token is invalid or has expired", 400));
+    return next(
+      new ErrorHandler("Password reset token is invalid or has expired", 400)
+    );
   }
 
   if (req.body.password !== req.body.confirmPassword) {
@@ -277,7 +281,7 @@ export const uploadAvatar = catchAsyncErrors(async (req, res, next) => {
  * Admin
  * =======================================================*/
 
-export const allUsers = catchAsyncErrors(async (req, res) => {
+export const allUsers = catchAsyncErrors(async (_req, res) => {
   const users = await User.find();
   res.status(200).json({ success: true, users });
 });
